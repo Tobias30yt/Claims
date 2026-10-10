@@ -119,3 +119,10 @@ Automated tests cover numeric permission resolution, persistent state/restart, f
 Proprietary, all rights reserved. [LICENSE.md](LICENSE.md) uses the requested [Reports license](https://github.com/Tobias30yt/Reports/blob/main/LICENSE.md), with the software name changed to **Midnite Claims**. Third-party dependencies retain their own licenses. Minecraft and its assets are not distributed in this repository.
 
 API references: [Paper 26.3](https://papermc.io/news/26-3/), [Fabric 26.3](https://fabricmc.net/2026/09/15/263.html), [Fabric networking](https://docs.fabricmc.net/develop/networking), [Fabric screens](https://docs.fabricmc.net/develop/rendering/gui/custom-screens).
+
+## Alle Tobias30 MidniteSMP plugins
+
+- Claims: _[Paper 1.3.0](https://github.com/Tobias30yt/Claims/releases/tag/paper-1.3.0)_
+- Claims Client Mod: _[1.31.4](https://github.com/Tobias30yt/Claims-Client/releases/tag/v1.31.4)_
+- Reports: _[1.2.34](https://github.com/Tobias30yt/Reports/releases/tag/v1.2.34)_
+- GrimAC: _[Modrinth](https://modrinth.com/plugin/grimac)_
