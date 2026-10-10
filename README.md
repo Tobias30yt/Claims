@@ -5,13 +5,15 @@ Chunk claims and named homes for **Paper 26.3**, with an optional **Fabric 26.3 
 ## Installation
 
 1. Run Paper **26.3** with **Java 25**. The plugin is built against Paper `26.3.build.169-beta`.
-2. Put `plugin/build/libs/Claims-1.0.0.jar` in the server's `plugins/` folder and restart.
-3. Optional: install Fabric Loader **0.19.5+** and Fabric API **0.162.0+26.3** on the client, then put `client/build/libs/Claims-Client-1.0.0.jar` in its `mods/` folder.
+2. Put the latest `plugin/build/libs/Claims-1.1.0.jar` in the server's `plugins/` folder and restart.
+3. Optional: install Fabric Loader **0.19.5+** and Fabric API **0.162.0+26.3** on the client, then put `client/build/libs/Claims-Client-1.1.0.jar` in its `mods/` folder.
 4. Run `/homes` or `/claims`. Clients with the mod automatically receive native menus; other players receive decorated, paginated chest menus.
 
 The mod is **client-only**. Paper needs only the plugin. There are no required server plugins. LuckPerms permissions work through Bukkit's permission API.
 
 Use `/claims chest` to force chest menus for your current connection and `/claims auto` to restore automatic detection. With the mod installed, chest mode applies to homes, claims and admin menus. Client menu detection resets when reconnecting. Set `client-menus: false` to force chest menus server-wide.
+
+Menus use the same simple layout in both modes: the top shows what you are viewing and your current count, the center lists homes/chunks/players, and the bottom row has navigation, the main actions and Close. Select a home or chunk once to open its options; selecting a home will no longer teleport immediately. Empty lists say how to add the first entry. The client screen groups readable two-line cards into two columns, gives tooltips and splits larger pages to fit the user's window. Pagination arrows advance through the visible entries before opening the next server page.
 
 ## Commands
 
@@ -30,7 +32,7 @@ Use `/claims chest` to force chest menus for your current connection and `/claim
 | `/claims reload` | Reload configuration without replacing stored data |
 | `/claims chest` / `/claims auto` | Choose menu mode |
 
-Home names use 1–24 letters, digits, underscores or hyphens and are case-insensitive. Chest menu input is entered privately through chat after clicking a name-input button; type `cancel` to abort. The prompt expires after 60 seconds. Native menus use a text field at the bottom of the screen. Hover buttons for details. Both menus paginate large lists; native menus additionally adapt the number of visible rows to GUI scale.
+Home names use 1–24 letters, digits, underscores or hyphens and are case-insensitive. Chest menu input is entered privately through chat after clicking a name-input button; type `cancel` to abort. The prompt expires after 60 seconds. Native menus use a text field at the bottom of the screen. Hover buttons for details.
 
 ## Permissions and limits
 
@@ -104,8 +106,8 @@ Install **JDK 25** and set `JAVA_HOME` to it. Gradle 9.6.0 is pinned in the incl
 
 Outputs:
 
-- `plugin/build/libs/Claims-1.0.0.jar` — server plugin
-- `client/build/libs/Claims-Client-1.0.0.jar` — optional client mod
+- `plugin/build/libs/Claims-1.1.0.jar` — server plugin
+- `client/build/libs/Claims-Client-1.1.0.jar` — optional client mod
 
 The shared wire protocol is bundled into both artifacts; it is not a separate installation. An optional GitHub Actions workflow template is included at `docs/ci/github-actions-build.yml`. To activate CI, copy it to `.github/workflows/build.yml` using GitHub authentication with workflow permission. The template builds/tests both projects and uploads the JARs. It is not active in this repository.
 

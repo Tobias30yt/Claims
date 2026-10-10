@@ -20,8 +20,9 @@ import java.util.function.Consumer;
 
 final class Menus implements Listener, PluginMessageListener {
     static final String HELLO = "claims:hello", MENU = "claims:menu", ACTION = "claims:action";
-    private static final int PAGE = 14;
-    private static final int[] SLOTS = {10,11,12,13,14,15,16,19,20,21,22,23,24,25,28,29,30,31,32,33,34,37,38,39,40,41,42,43};
+    private static final int PAGE = 21;
+    private static final int[] ENTRY_SLOTS = {10,11,12,13,14,15,16,19,20,21,22,23,24,25,28,29,30,31,32,33,34};
+    private static final int[] FOOTER_SLOTS = {46,47,51,52};
     private record Action(Wire.Button button, Material icon, Consumer<String> callback) {}
     private record Session(UUID id, List<Action> actions, long expiry) {}
     private record Prompt(UUID session, int index) {}
@@ -30,8 +31,8 @@ final class Menus implements Listener, PluginMessageListener {
     private final Map<UUID, Prompt> prompts = new ConcurrentHashMap<>();
     private final Set<UUID> nativeClients = new HashSet<>(), forcedChest = new HashSet<>();
     private static final class Holder implements InventoryHolder {
-        final UUID id; Inventory inventory;
-        Holder(UUID id) { this.id = id; }
+        final UUID id; final int[] actionSlots = new int[54]; Inventory inventory;
+        Holder(UUID id) { this.id = id; Arrays.fill(actionSlots, -1); }
         @Override public Inventory getInventory() { return inventory; }
     }
     Menus(ClaimsPlugin plugin) {
@@ -52,28 +53,49 @@ final class Menus implements Listener, PluginMessageListener {
     private Action danger(String label, String detail, Runnable callback) {
         return new Action(new Wire.Button(label, detail, false, true), Material.RED_DYE, ignored -> callback.run());
     }
-    private void show(Player p, String title, String subtitle, List<Action> actions) {
+    private void show(Player p, String title, String subtitle, List<Action> actions) { show(p, title, subtitle, actions, 0, ""); }
+    private void show(Player p, String title, String subtitle, List<Action> actions, int entryCount, String emptyState) {
         if (!plugin.use(p)) return;
-        if (actions.size() > SLOTS.length) throw new IllegalArgumentException("Menu too large");
+        long navCount = actions.stream().filter(a -> isNavigation(a.button().label())).count();
+        long footerCount = actions.size() - entryCount - navCount;
+        if (entryCount < 0 || entryCount > ENTRY_SLOTS.length || footerCount > FOOTER_SLOTS.length || entryCount > actions.size()) throw new IllegalArgumentException("Menu layout exceeds its visible slots");
         UUID id = UUID.randomUUID(); var session = new Session(id, List.copyOf(actions), System.currentTimeMillis() + 600_000);
         prompts.remove(p.getUniqueId()); sessions.put(p.getUniqueId(), session);
         if (plugin.getConfig().getBoolean("client-menus", true) && nativeClients.contains(p.getUniqueId()) && !forcedChest.contains(p.getUniqueId())) {
             p.closeInventory();
-            p.sendPluginMessage(plugin, MENU, Wire.menu(new Wire.Menu(id, title, subtitle, actions.stream().map(Action::button).toList())));
+            p.sendPluginMessage(plugin, MENU, Wire.menu(new Wire.Menu(id, title, subtitle, actions.stream().map(Action::button).toList(), entryCount)));
             return;
         }
         Holder holder = new Holder(id);
         holder.inventory = Bukkit.createInventory(holder, 54, Component.text(title, NamedTextColor.DARK_AQUA));
-        for (int slot = 0; slot < 54; slot++) holder.inventory.setItem(slot, item(Material.GRAY_STAINED_GLASS_PANE, " ", "", false));
-        for (int slot : SLOTS) holder.inventory.setItem(slot, null);
-        holder.inventory.setItem(4, item(Material.HEART_OF_THE_SEA, title, subtitle, false));
-        holder.inventory.setItem(49, item(Material.BARRIER, "Close", "Your changes are saved automatically.", false));
-        for (int i = 0; i < actions.size(); i++) {
-            Action a = actions.get(i);
-            holder.inventory.setItem(SLOTS[i], item(a.icon(), a.button().label(), a.button().detail() + (a.button().input() ? "\nClick, then enter text in chat." : ""), a.button().danger()));
+        for (int slot = 0; slot < 54; slot++) {
+            int row = slot / 9, col = slot % 9;
+            Material glass = row == 0 || row == 5 || col == 0 || col == 8 ? Material.CYAN_STAINED_GLASS_PANE : Material.LIGHT_BLUE_STAINED_GLASS_PANE;
+            holder.inventory.setItem(slot, item(glass, " ", "", false));
         }
+        holder.inventory.setItem(4, item(Material.HEART_OF_THE_SEA, title, subtitle + "\nYour changes save automatically.", false));
+        if (entryCount == 0 && !emptyState.isBlank()) holder.inventory.setItem(22, item(Material.BOOK, "Nothing here yet", emptyState, false));
+        for (int i = 0; i < entryCount; i++) {
+            Action a = actions.get(i); holder.inventory.setItem(ENTRY_SLOTS[i], item(a.icon(), a.button().label(), a.button().detail(), a.button().danger()));
+            holder.actionSlots[ENTRY_SLOTS[i]] = i;
+        }
+        int footer = 0;
+        for (int i = entryCount; i < actions.size(); i++) {
+            Action a = actions.get(i); String label = a.button().label();
+            if (isNavigation(label)) {
+                boolean previous = label.equalsIgnoreCase("Previous page");
+                holder.inventory.setItem(previous ? 45 : 53, item(previous ? Material.ARROW : Material.SPECTRAL_ARROW, label, a.button().detail(), false));
+                holder.actionSlots[previous ? 45 : 53] = i;
+            } else {
+                int slot = FOOTER_SLOTS[footer++];
+                holder.inventory.setItem(slot, item(a.icon(), label, a.button().detail() + (a.button().input() ? "\nClick and enter your answer in chat. Type cancel to stop." : ""), a.button().danger()));
+                holder.actionSlots[slot] = i;
+            }
+        }
+        holder.inventory.setItem(49, item(Material.BARRIER, "Close menu", "Press Escape or click to close.", false));
         p.openInventory(holder.inventory);
     }
+    private boolean isNavigation(String label) { return label.equalsIgnoreCase("Previous page") || label.equalsIgnoreCase("Next page"); }
     private ItemStack item(Material material, String title, String detail, boolean danger) {
         ItemStack item = new ItemStack(material); var meta = item.getItemMeta();
         meta.displayName(Component.text(title, danger ? NamedTextColor.RED : NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false));
@@ -86,22 +108,23 @@ final class Menus implements Listener, PluginMessageListener {
         var homes = plugin.data.homes(owner); var actions = new ArrayList<Action>();
         int current = clamp(page, homes.size());
         for (var home : homes.subList(current * PAGE, Math.min(homes.size(), (current + 1) * PAGE))) {
-            actions.add(button(home.name(), plugin.world(home.world()) + " • " + (int) home.x() + ", " + (int) home.y() + ", " + (int) home.z() + "\nOpen home options", Material.RED_BED, () -> home(p, owner, home.name())));
+            actions.add(button(home.name(), plugin.world(home.world()) + "\n" + (int) home.x() + ", " + (int) home.y() + ", " + (int) home.z() + " • Click for options", Material.RED_BED, () -> home(p, owner, home.name())));
         }
         if (p.getUniqueId().equals(owner)) actions.add(input("Save home", "Enter a home name (1–24 characters).", text -> plugin.setHome(p, text)));
         pages(actions, current, homes.size(), n -> homes(p, owner, n));
         actions.add(button("Claims", "Manage protected chunks", Material.GRASS_BLOCK, () -> claims(p, owner, 0)));
         if (p.hasPermission("claims.admin")) actions.add(button("Administration", "Browse all players", Material.COMMAND_BLOCK, () -> admin(p, 0)));
         String limit = p.getUniqueId().equals(owner) ? " / " + Limits.display(plugin.limit(p, "homes")) : "";
-        show(p, "Homes · " + plugin.data.name(owner), homes.size() + limit + " homes • Page " + (current + 1), actions);
+        String subtitle = homes.isEmpty() ? "No homes yet • Use Save home below" : homes.size() + limit + " saved homes • Page " + (current + 1);
+        show(p, owner.equals(p.getUniqueId()) ? "Your Homes" : plugin.data.name(owner) + "'s Homes", subtitle, actions, homes.size() - current * PAGE, homes.isEmpty() ? "Use Save home below to add your first destination." : "");
     }
     private void home(Player p, UUID owner, String name) {
         if (!owner(p, owner)) return;
         var h = plugin.data.home(owner, name); if (h == null) { homes(p, owner, 0); return; }
-        show(p, "Home · " + name, plugin.world(h.world()) + " • " + (int) h.x() + ", " + (int) h.y() + ", " + (int) h.z(), List.of(
+        show(p, name, plugin.world(h.world()) + " • " + (int) h.x() + ", " + (int) h.y() + ", " + (int) h.z(), List.of(
             button("Teleport", "Stand still during the warmup.", Material.ENDER_PEARL, () -> plugin.teleports.home(p, owner, name)),
-            danger("Delete home", "Requires confirmation", () -> delete(p, owner, name)),
-            button("Back", "All homes", Material.ARROW, () -> homes(p, owner, 0))));
+            danger("Delete home", "Delete this saved destination", () -> delete(p, owner, name)),
+            button("All homes", "Return to your home list", Material.BOOK, () -> homes(p, owner, 0))));
     }
     void delete(Player p, UUID owner, String name) {
         if (!owner(p, owner)) return;
@@ -113,24 +136,25 @@ final class Menus implements Listener, PluginMessageListener {
         var claims = plugin.data.claims(owner); var actions = new ArrayList<Action>(); int current = clamp(page, claims.size());
         for (var claim : claims.subList(current * PAGE, Math.min(claims.size(), (current + 1) * PAGE))) {
             var key = claim.key();
-            actions.add(button("Chunk " + key.x() + ", " + key.z(), plugin.world(key.world()) + "\nExplosionproof • " + claim.trusted().size() + " trusted players", Material.GRASS_BLOCK, () -> claim(p, key)));
+            actions.add(button("Chunk " + key.x() + ", " + key.z(), plugin.world(key.world()) + "\n" + claim.trusted().size() + " trusted • Click for options", Material.GRASS_BLOCK, () -> claim(p, key)));
         }
-        if (owner.equals(p.getUniqueId())) actions.add(button("Claim current chunk", "Protect your current chunk", Material.GOLDEN_SHOVEL, () -> { plugin.claim(p); claims(p, owner, current); }));
+        if (owner.equals(p.getUniqueId())) actions.add(button("Claim this chunk", "Protect the chunk you are standing in", Material.GOLDEN_SHOVEL, () -> { plugin.claim(p); claims(p, owner, current); }));
         pages(actions, current, claims.size(), n -> claims(p, owner, n));
         actions.add(button("Homes", "Manage saved locations", Material.RED_BED, () -> homes(p, owner, 0)));
         if (p.hasPermission("claims.admin")) actions.add(button("Administration", "Browse all players", Material.COMMAND_BLOCK, () -> admin(p, 0)));
         String limit = owner.equals(p.getUniqueId()) ? " / " + Limits.display(plugin.limit(p, "claims")) : "";
-        show(p, "Claims · " + plugin.data.name(owner), claims.size() + limit + " chunks • Page " + (current + 1), actions);
+        String subtitle = claims.isEmpty() ? "No claims yet • Claim the chunk you are in" : claims.size() + limit + " protected chunks • Page " + (current + 1);
+        show(p, owner.equals(p.getUniqueId()) ? "Your Claims" : plugin.data.name(owner) + "'s Claims", subtitle, actions, claims.size() - current * PAGE, claims.isEmpty() ? "Choose Claim this chunk below to protect the area you are standing in." : "");
     }
     private void claim(Player p, DataStore.Key key) {
         var c = plugin.data.claim(key);
         if (c == null) { ClaimsPlugin.error(p, "Claim no longer exists."); return; }
         if (!owner(p, c.owner())) return;
-        show(p, "Chunk " + key.x() + ", " + key.z(), plugin.world(key.world()) + " • Owner: " + plugin.data.name(c.owner()), List.of(
-            input("Trust player", "Grant building and container access in this chunk", text -> { plugin.trust(p, key, text, true); claim(p, key); }),
-            button("Trusted players", c.trusted().size() + " players • Click to manage", Material.PLAYER_HEAD, () -> trusted(p, key, 0)),
-            danger("Release claim", "Remove protection • Requires confirmation", () -> release(p, c)),
-            button("Back", "All claims", Material.ARROW, () -> claims(p, c.owner(), 0))));
+        show(p, "Chunk " + key.x() + ", " + key.z(), plugin.world(key.world()) + " • " + plugin.data.name(c.owner()), List.of(
+            input("Trust player", "Enter a player name or UUID", text -> { plugin.trust(p, key, text, true); claim(p, key); }),
+            button("Manage trusted", c.trusted().size() + " trusted • Review access", Material.PLAYER_HEAD, () -> trusted(p, key, 0)),
+            danger("Unclaim", "Release this protected chunk", () -> release(p, c)),
+            button("All claims", "Return to your chunk list", Material.GRASS_BLOCK, () -> claims(p, c.owner(), 0))));
     }
     private void trusted(Player p, DataStore.Key key, int page) {
         var c = plugin.data.claim(key); if (c == null || !owner(p, c.owner())) return;
@@ -139,7 +163,7 @@ final class Menus implements Listener, PluginMessageListener {
         for (UUID id : ids.subList(current * PAGE, Math.min(ids.size(), (current + 1) * PAGE))) actions.add(danger("Remove " + plugin.data.name(id), "Revoke access to this chunk", () -> confirm(p, "Remove " + plugin.data.name(id) + "?", () -> { plugin.trust(p, key, id.toString(), false); trusted(p, key, current); }, () -> trusted(p, key, current))));
         pages(actions, current, ids.size(), n -> trusted(p, key, n));
         actions.add(button("Back", "Chunk options", Material.ARROW, () -> claim(p, key)));
-        show(p, "Trusted players", "Access includes building, entities and containers.", actions);
+        show(p, "Trusted players", ids.isEmpty() ? "Nobody has access yet" : ids.size() + " people can build and use this chunk", actions, ids.size() - current * PAGE, ids.isEmpty() ? "Use Trust player in the chunk menu to add someone." : "");
     }
     void release(Player p, DataStore.Claim c) {
         if (!owner(p, c.owner())) return;
@@ -159,11 +183,11 @@ final class Menus implements Listener, PluginMessageListener {
         }));
         actions.add(button("Reload configuration", "Reload defaults, worlds and teleport settings", Material.REPEATER, () -> { if (plugin.admin(p)) { plugin.reloadConfig(); ClaimsPlugin.message(p, "Configuration reloaded."); admin(p, current); } }));
         actions.add(button("My homes", "Return to your homes", Material.RED_BED, () -> homes(p, p.getUniqueId(), 0)));
-        show(p, "Claims Administration", ids.size() + " players • Page " + (current + 1), actions);
+        show(p, "Claims Admin", ids.isEmpty() ? "No player data yet • Players appear after joining" : ids.size() + " players • Page " + (current + 1), actions, ids.size() - current * PAGE, ids.isEmpty() ? "No player data yet. Players appear here after joining." : "");
     }
     private void player(Player p, UUID owner) {
         if (!plugin.admin(p)) return;
-        show(p, "Admin · " + plugin.data.name(owner), "Review claims, trust and homes for this player.", List.of(
+        show(p, plugin.data.name(owner), "Choose what you would like to manage.", List.of(
             button("Claims", "View and release protected chunks", Material.GRASS_BLOCK, () -> claims(p, owner, 0)),
             button("Homes", "Inspect, teleport to or delete homes", Material.RED_BED, () -> homes(p, owner, 0)),
             button("Back", "All players", Material.ARROW, () -> admin(p, 0))));
@@ -193,10 +217,12 @@ final class Menus implements Listener, PluginMessageListener {
         if (!(e.getView().getTopInventory().getHolder() instanceof Holder holder)) return;
         e.setCancelled(true);
         if (!(e.getWhoClicked() instanceof Player p)) return;
-        if (e.getRawSlot() == 49) { Bukkit.getScheduler().runTask(plugin, () -> p.closeInventory()); return; }
-        int index = -1; for (int i = 0; i < SLOTS.length; i++) if (SLOTS[i] == e.getRawSlot()) index = i;
+        if (e.getRawSlot() == 49) { sessions.remove(p.getUniqueId()); Bukkit.getScheduler().runTask(plugin, () -> p.closeInventory()); return; }
+        int raw = e.getRawSlot();
         Session session = sessions.get(p.getUniqueId());
-        if (session == null || !session.id().equals(holder.id) || index < 0 || index >= session.actions().size()) return;
+        if (session == null || !session.id().equals(holder.id)) return;
+        int index = raw >= 0 && raw < holder.actionSlots.length ? holder.actionSlots[raw] : -1;
+        if (index < 0 || index >= session.actions().size()) return;
         int selected = index;
         Bukkit.getScheduler().runTask(plugin, () -> {
             if (sessions.get(p.getUniqueId()) != session) return;

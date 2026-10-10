@@ -2,7 +2,7 @@
 
 Verified on 2026-10-10:
 
-- JDK 25 / Gradle 9.6.0: both production JARs built successfully.
+- JDK 25 / Gradle 9.6.0: both 1.1.0 production JARs built successfully.
 - 19 automated tests passed, including session replay, cross-player packet rejection and admin permission revocation.
 - Isolated Paper 26.3 build 145: Claims 1.0.0 loaded and enabled, `/version Claims` returned the expected version, and the server stopped cleanly. Compilation uses Paper API build 169.
 - A visual Minecraft client pass and the full two-player acceptance checklist below have not been performed.

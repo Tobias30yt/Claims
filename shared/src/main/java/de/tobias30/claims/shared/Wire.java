@@ -6,10 +6,11 @@ import java.util.*;
 
 /** Fixed-width big-endian framing, deliberately independent of Minecraft codecs. */
 public final class Wire {
-    public static final int VERSION = 1, MAX_BYTES = 30000, MAX_BUTTONS = 40;
+    public static final int VERSION = 2, MAX_BYTES = 30000, MAX_BUTTONS = 40;
     public record Button(String label, String detail, boolean input, boolean danger) {}
-    public record Menu(UUID session, String title, String subtitle, List<Button> buttons) {
+    public record Menu(UUID session, String title, String subtitle, List<Button> buttons, int entryCount) {
         public Menu { buttons = List.copyOf(buttons); }
+        public Menu(UUID session, String title, String subtitle, List<Button> buttons) { this(session, title, subtitle, buttons, 0); }
     }
     public record Action(UUID session, int index, String input) {}
     private Wire() {}
@@ -48,16 +49,17 @@ public final class Wire {
         return encode(out -> {
             uuid(out, menu.session()); text(out, menu.title()); text(out, menu.subtitle());
             if (menu.buttons().size() > MAX_BUTTONS) throw new IOException("Too many buttons");
-            out.writeInt(menu.buttons().size());
+            if (menu.entryCount() < 0 || menu.entryCount() > menu.buttons().size()) throw new IOException("Invalid entry count");
+            out.writeInt(menu.entryCount()); out.writeInt(menu.buttons().size());
             for (Button b : menu.buttons()) { text(out, b.label()); text(out, b.detail()); out.writeBoolean(b.input()); out.writeBoolean(b.danger()); }
         });
     }
     public static Menu menu(byte[] bytes) throws IOException {
         var in = input(bytes); UUID id = uuid(in); String title = text(in), subtitle = text(in);
-        int count = in.readInt(); if (count < 0 || count > MAX_BUTTONS) throw new IOException("Invalid button count");
+        int entryCount = in.readInt(), count = in.readInt(); if (count < 0 || count > MAX_BUTTONS || entryCount < 0 || entryCount > count) throw new IOException("Invalid button count");
         var buttons = new ArrayList<Button>();
         for (int i = 0; i < count; i++) buttons.add(new Button(text(in), text(in), in.readBoolean(), in.readBoolean()));
-        end(in); return new Menu(id, title, subtitle, buttons);
+        end(in); return new Menu(id, title, subtitle, buttons, entryCount);
     }
     public static byte[] action(Action action) {
         return encode(out -> { uuid(out, action.session()); out.writeInt(action.index()); text(out, action.input()); });

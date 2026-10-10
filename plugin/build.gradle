@@ -6,7 +6,7 @@ dependencies {
     testImplementation 'org.mockito:mockito-core:5.20.0'
 }
 jar {
-    archiveFileName = 'Claims-1.0.0.jar'
+    archiveFileName = "Claims-${project.version}.jar"
     from project(':shared').sourceSets.main.output
     from(rootProject.file('LICENSE.md'))
 }
