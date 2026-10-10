@@ -78,11 +78,6 @@ final class Menus implements Listener, PluginMessageListener {
         }
         Holder holder = new Holder(id);
         holder.inventory = Bukkit.createInventory(holder, 54, Component.text(title, NamedTextColor.DARK_AQUA));
-        for (int slot = 0; slot < 54; slot++) {
-            int row = slot / 9, col = slot % 9;
-            Material glass = row == 0 || row == 5 || col == 0 || col == 8 ? Material.CYAN_STAINED_GLASS_PANE : Material.LIGHT_BLUE_STAINED_GLASS_PANE;
-            holder.inventory.setItem(slot, item(glass, " ", "", false));
-        }
         holder.inventory.setItem(4, item(Material.HEART_OF_THE_SEA, title, subtitle + "\nYour changes save automatically.", false));
         if (entryCount == 0 && !emptyState.isBlank()) holder.inventory.setItem(22, item(Material.BOOK, "Nothing here yet", emptyState, false));
         for (int i = 0; i < entryCount; i++) {
@@ -119,7 +114,7 @@ final class Menus implements Listener, PluginMessageListener {
         var homes = plugin.data.homes(owner); var actions = new ArrayList<Action>();
         int current = clamp(page, homes.size());
         for (var home : homes.subList(current * PAGE, Math.min(homes.size(), (current + 1) * PAGE))) {
-            actions.add(button(home.name(), plugin.world(home.world()) + "\n" + (int) home.x() + ", " + (int) home.y() + ", " + (int) home.z() + " • Click for options", Material.RED_BED, () -> home(p, owner, home.name())));
+            actions.add(button(home.name(), plugin.world(home.world()) + " • " + (int) home.x() + ", " + (int) home.y() + ", " + (int) home.z() + " • Click to teleport", Material.RED_BED, () -> plugin.teleports.home(p, owner, home.name())));
         }
         if (p.getUniqueId().equals(owner)) actions.add(input("Create new home", "Enter a home name (1–24 characters).", text -> { plugin.setHome(p, text); homes(p, owner, 0); }));
         pages(actions, current, homes.size(), n -> homes(p, owner, n));

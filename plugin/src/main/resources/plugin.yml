@@ -1,5 +1,5 @@
 name: Claims
-version: 1.3.0
+version: 1.4.0
 main: de.tobias30.claims.ClaimsPlugin
 api-version: '26.3'
 author: Tobias30
@@ -15,10 +15,12 @@ commands:
     description: Manage claims, trust, menus and administration
     permission: claims.use
   homes:
-    description: Open your homes
+    description: Open your homes or teleport to one by name
+    usage: /homes [name]
     permission: claims.use
   home:
-    description: Teleport to a home
+    description: Open your homes or teleport to one by name
+    usage: /home [name]
     permission: claims.use
   sethome:
     description: Save a named home

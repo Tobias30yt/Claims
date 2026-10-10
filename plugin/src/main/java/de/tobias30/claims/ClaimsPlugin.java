@@ -122,8 +122,8 @@ public final class ClaimsPlugin extends JavaPlugin implements Listener, CommandE
         switch (command.getName()) {
             case "claim" -> claim(p);
             case "unclaim" -> { var c = data.claim(key(p.getLocation())); if (c == null) error(p, "This chunk is not claimed."); else menus.release(p, c); }
-            case "homes" -> menus.main(p);
-            case "home" -> { if (args.length == 0) menus.main(p); else teleports.home(p, p.getUniqueId(), args[0].toLowerCase(Locale.ROOT)); }
+            case "homes" -> { if (args.length == 0) menus.homes(p, p.getUniqueId(), 0); else teleports.home(p, p.getUniqueId(), args[0].toLowerCase(Locale.ROOT)); }
+            case "home" -> { if (args.length == 0) menus.homes(p, p.getUniqueId(), 0); else teleports.home(p, p.getUniqueId(), args[0].toLowerCase(Locale.ROOT)); }
             case "sethome" -> { if (args.length != 1) error(p, "Usage: /sethome <name>"); else setHome(p, args[0]); }
             case "delhome" -> { if (args.length != 1) error(p, "Usage: /delhome <name>"); else menus.delete(p, p.getUniqueId(), args[0].toLowerCase(Locale.ROOT)); }
             case "claims" -> {
@@ -145,7 +145,7 @@ public final class ClaimsPlugin extends JavaPlugin implements Listener, CommandE
         if (!(s instanceof Player p)) return List.of();
         List<String> options = List.of();
         if (args.length == 1) {
-            if (Set.of("home", "delhome").contains(c.getName())) options = data.homes(p.getUniqueId()).stream().map(DataStore.Home::name).toList();
+            if (Set.of("home", "homes", "delhome").contains(c.getName())) options = data.homes(p.getUniqueId()).stream().map(DataStore.Home::name).toList();
             if (c.getName().equals("claims")) options = p.hasPermission("claims.admin") ? List.of("menu", "list", "trust", "untrust", "chest", "auto", "admin", "reload") : List.of("menu", "list", "trust", "untrust", "chest", "auto");
         } else if (args.length == 2 && c.getName().equals("claims") && Set.of("trust", "untrust").contains(args[0])) options = data.players().stream().map(data::name).toList();
         String prefix = args[args.length - 1].toLowerCase(Locale.ROOT);
