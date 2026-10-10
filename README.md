@@ -5,7 +5,7 @@ Chunk claims and named homes for **Paper 26.3**. An optional Fabric client mod i
 ## Installation
 
 1. Run Paper **26.3** with **Java 25**. The plugin is built against Paper `26.3.build.169-beta`.
-2. Put `plugin/build/libs/Claims-1.3.0.jar` in the server's `plugins/` folder and restart.
+2. Put `plugin/build/libs/Claims-1.5.0.jar` in the server's `plugins/` folder and restart.
 3. Optional: install Fabric Loader **0.19.5+** and Fabric API **0.162.0+26.3**, then install the [Claims Client mod](https://github.com/Tobias30yt/Claims-Client/releases) in the `mods/` folder. Its configurable default key is O (Controls → Claims).
 4. Run `/homes` or `/claims` for the central menu. It has Homes and Claims, plus Admin for administrators. Clients with the mod automatically receive native menus; other players receive decorated, paginated chest menus.
 
@@ -13,7 +13,9 @@ The mod is **client-only**. Paper needs only the plugin. There are no required s
 
 Use `/claims chest` to force chest menus for your current connection and `/claims auto` to restore automatic detection. With the mod installed, chest mode applies to homes, claims and admin menus. Client menu detection resets when reconnecting. Set `client-menus: false` to force chest menus server-wide.
 
-Menus follow the same path in both modes: the central menu opens Homes, Claims or (for admins) Admin. Homes shows saved homes and Create new home. Claims shows only your claimed chunks; selecting one opens its coordinates, rename, whitelist and release actions. Claim a chunk with `/claim`. The Fabric screen uses native text fields. Without the mod, name and player inputs open the Minecraft sign editor. Lists are paginated, and selecting a home opens its options rather than teleporting immediately.
+Menus follow the same path in both modes: the central menu opens Homes, Claims or (for admins) Admin. Homes shows saved homes and Create new home; selecting a home teleports immediately. Claims shows your claimed chunks; selecting one opens its coordinates, rename, whitelist, release and green particle-border preview. Claim a chunk with `/claim`. Chunks overlapping WorldGuard protected regions cannot be claimed when WorldGuard is installed. The Fabric screen uses native text fields. Without the mod, name and player inputs open the Minecraft sign editor. Lists are paginated.
+
+On startup and every 48 hours, Claims checks GitHub for newer releases and tells the console and online operators how many releases are available. Set `update-checker.enabled: false` to disable the server check. The optional client mod also checks for updates at launch and writes a warning to the client log.
 
 ## Commands
 
@@ -122,7 +124,8 @@ API references: [Paper 26.3](https://papermc.io/news/26-3/), [Fabric 26.3](https
 
 ## Alle Tobias30 MidniteSMP plugins
 
-- Claims: _[Paper 1.4.0](https://github.com/Tobias30yt/Claims/releases/tag/paper-1.4.0)_
-- Claims Client Mod: _[1.31.5](https://github.com/Tobias30yt/Claims-Client/releases/tag/v1.31.5)_
-- Reports: _[1.2.34](https://github.com/Tobias30yt/Reports/releases/tag/v1.2.34)_
+- Claims: _[Paper 1.5.0](https://github.com/Tobias30yt/Claims/releases/tag/paper-1.5.0)_
+- Claims Client Mod: _[1.31.6](https://github.com/Tobias30yt/Claims-Client/releases/tag/v1.31.6)_
+- Reports: _[1.2.35](https://github.com/Tobias30yt/Reports/releases/tag/v1.2.35)_
+- Reports: _[1.2.35](https://github.com/Tobias30yt/Reports/releases/tag/v1.2.35)_
 - GrimAC: _[Modrinth](https://modrinth.com/plugin/grimac)_

@@ -16,6 +16,9 @@ public final class ClaimsPlugin extends JavaPlugin implements Listener, CommandE
     DataStore data;
     Menus menus;
     Teleports teleports;
+    private WorldGuardHook worldGuard;
+    private de.tobias30.claims.update.ReleaseUpdateChecker updateChecker;
+    public record ClaimView(String world, int x, int z, String name, String owner) {}
     @Override public void onEnable() {
         saveDefaultConfig();
         try { data = new DataStore(getDataFolder().toPath().resolve("claims.dat")); }
@@ -25,6 +28,10 @@ public final class ClaimsPlugin extends JavaPlugin implements Listener, CommandE
             getServer().shutdown(); return;
         }
         menus = new Menus(this); teleports = new Teleports(this);
+        worldGuard = new WorldGuardHook();
+        if (worldGuard.installed()) getLogger().info("WorldGuard detected; claims overlapping protected regions are disabled.");
+        updateChecker = new de.tobias30.claims.update.ReleaseUpdateChecker(this);
+        updateChecker.start();
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getPluginManager().registerEvents(menus, this);
         getServer().getPluginManager().registerEvents(teleports, this);
@@ -34,7 +41,7 @@ public final class ClaimsPlugin extends JavaPlugin implements Listener, CommandE
         }
         getServer().getOnlinePlayers().forEach(this::remember);
     }
-    @Override public void onDisable() { if (menus != null) menus.close(); if (teleports != null) teleports.close(); }
+    @Override public void onDisable() { if (updateChecker != null) updateChecker.shutdown(); if (menus != null) menus.close(); if (teleports != null) teleports.close(); }
     @EventHandler public void join(PlayerJoinEvent e) { remember(e.getPlayer()); }
     private void remember(Player p) {
         if (!data.name(p.getUniqueId()).equals(p.getName())) save(p, s -> s.names.put(p.getUniqueId(), p.getName()));
@@ -62,9 +69,48 @@ public final class ClaimsPlugin extends JavaPlugin implements Listener, CommandE
         if (!use(p) || !enabledWorld(p)) return;
         var key = key(p.getLocation());
         if (data.claim(key) != null) { error(p, "This chunk is already claimed."); return; }
+        try {
+            if (worldGuard.intersectsProtectedRegion(p.getWorld(), key.x(), key.z())) {
+                error(p, "This chunk overlaps a WorldGuard-protected region and cannot be claimed."); return;
+            }
+        } catch (ReflectiveOperationException e) {
+            getLogger().warning("Could not query WorldGuard regions; refusing claim to avoid overlapping protection: " + e.getMessage());
+            error(p, "WorldGuard protection could not be checked. Please try again later."); return;
+        }
         if (data.claims(p.getUniqueId()).size() >= limit(p, "claims")) { error(p, "Claim limit reached."); return; }
         String defaultName = "Chunk " + key.x() + ", " + key.z();
         if (save(p, s -> s.claims.put(key, new DataStore.Claim(key, p.getUniqueId(), Set.of(), defaultName)))) message(p, "Chunk " + key.x() + ", " + key.z() + " claimed. Explosion protection is active.");
+    }
+
+    /** Read-only bridge used by Reports' optional staff bot integration. */
+    public List<ClaimView> discordClaimViews() {
+        return data.claims(null).stream().map(c -> new ClaimView(world(c.key().world()), c.key().x(), c.key().z(), c.name(), data.name(c.owner()))).toList();
+    }
+
+    /** Shows a short particle outline to an online Claims admin. */
+    public boolean showClaimBorder(Player viewer, UUID worldId, int chunkX, int chunkZ) {
+        if (viewer == null || !viewer.isOnline()) return false;
+        var claim = data.claim(new DataStore.Key(worldId, chunkX, chunkZ));
+        World world = Bukkit.getWorld(worldId);
+        if (claim == null || world == null || !owns(viewer, claim.owner())) return false;
+        Bukkit.getGlobalRegionScheduler().run(this, task -> {
+            int minX = chunkX << 4, minZ = chunkZ << 4;
+            int maxY = world.getMaxHeight();
+            for (int y = world.getMinHeight(); y < maxY; y += 16) {
+                for (int offset = 0; offset <= 16; offset += 8) {
+                    particle(viewer, world, minX + offset, y, minZ);
+                    particle(viewer, world, minX + offset, y, minZ + 16);
+                    particle(viewer, world, minX, y, minZ + offset);
+                    particle(viewer, world, minX + 16, y, minZ + offset);
+                }
+            }
+            message(viewer, "Green particles mark the chunk boundary from the world floor to build height.");
+        });
+        return true;
+    }
+
+    private void particle(Player viewer, World world, int x, int y, int z) {
+        world.spawnParticle(Particle.HAPPY_VILLAGER, new Location(world, x + 0.5, y + 0.5, z + 0.5), 1, 0, 0, 0, 0, viewer);
     }
     void unclaim(Player p, DataStore.Key key, UUID expectedOwner) {
         if (!use(p)) return;

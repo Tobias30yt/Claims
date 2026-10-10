@@ -156,6 +156,7 @@ final class Menus implements Listener, PluginMessageListener {
         if (!owner(p, c.owner())) return;
         String title = c.name().isBlank() ? "Chunk " + key.x() + ", " + key.z() : c.name();
         show(p, title, plugin.world(key.world()) + " • Chunk " + key.x() + ", " + key.z() + " • " + plugin.data.name(c.owner()), List.of(
+            button("View border", "Show a green particle outline up to build height", Material.GLOWSTONE_DUST, () -> plugin.showClaimBorder(p, key.world(), key.x(), key.z())),
             input("Rename claim", "Enter a name (1–32 letters, digits, spaces, _ or -)", text -> { plugin.renameClaim(p, key, text); claim(p, key); }),
             input("Add whitelist player", "Enter a player name or UUID", text -> { plugin.trust(p, key, text, true); claim(p, key); }),
             button("Whitelist", c.trusted().size() + " allowed player(s) • Manage access", Material.PLAYER_HEAD, () -> trusted(p, key, 0)),

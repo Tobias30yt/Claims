@@ -1,7 +1,8 @@
 name: Claims
-version: 1.4.0
+version: 1.5.0
 main: de.tobias30.claims.ClaimsPlugin
 api-version: '26.3'
+softdepend: [WorldGuard]
 author: Tobias30
 description: Chunk protection, homes and optional native Fabric menus.
 commands:
