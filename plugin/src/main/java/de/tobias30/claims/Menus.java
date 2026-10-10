@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 final class Menus implements Listener, PluginMessageListener {
-    static final String HELLO = "claims:hello", MENU = "claims:menu", ACTION = "claims:action";
+    static final String HELLO = "claims:hello", MENU = "claims:menu", ACTION = "claims:action", OPEN = "claims:open";
     private static final int PAGE = 21;
     private static final int[] ENTRY_SLOTS = {10,11,12,13,14,15,16,19,20,21,22,23,24,25,28,29,30,31,32,33,34};
     private static final int[] FOOTER_SLOTS = {46,47,48,50,51,52};
@@ -42,6 +42,7 @@ final class Menus implements Listener, PluginMessageListener {
         var messenger = Bukkit.getMessenger();
         messenger.registerIncomingPluginChannel(plugin, HELLO, this);
         messenger.registerIncomingPluginChannel(plugin, ACTION, this);
+        messenger.registerIncomingPluginChannel(plugin, OPEN, this);
         messenger.registerOutgoingPluginChannel(plugin, MENU);
     }
     void chest(Player p) { forcedChest.add(p.getUniqueId()); }
@@ -216,6 +217,7 @@ final class Menus implements Listener, PluginMessageListener {
         p.closeInventory(); session.actions().get(index).callback().accept(text.trim());
     }
     @Override public void onPluginMessageReceived(String channel, Player p, byte[] data) {
+        if (channel.equals(OPEN)) { if (data.length == 0) main(p); return; }
         if (channel.equals(HELLO)) {
             if (data.length == 4 && ByteBuffer.wrap(data).getInt() == Wire.VERSION) nativeClients.add(p.getUniqueId());
         } else if (channel.equals(ACTION) && nativeClients.contains(p.getUniqueId())) {

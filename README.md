@@ -1,12 +1,12 @@
 # Midnite Claims
 
-Chunk claims and named homes for **Paper 26.3**, with an optional **Fabric 26.3 client mod** that replaces this plugin's chest menus with real vanilla screens, buttons, text fields and tooltips.
+Chunk claims and named homes for **Paper 26.3**. An optional Fabric client mod is published separately and replaces chest menus with native vanilla screens, buttons, text fields and tooltips.
 
 ## Installation
 
 1. Run Paper **26.3** with **Java 25**. The plugin is built against Paper `26.3.build.169-beta`.
-2. Put `plugin/build/libs/Claims-1.2.0.jar` in the server's `plugins/` folder and restart.
-3. Optional: install Fabric Loader **0.19.5+** and Fabric API **0.162.0+26.3** on the client, then put `client/build/libs/Claims-Client-1.2.0.jar` in its `mods/` folder.
+2. Put `plugin/build/libs/Claims-1.3.0.jar` in the server's `plugins/` folder and restart.
+3. Optional: install Fabric Loader **0.19.5+** and Fabric API **0.162.0+26.3**, then install the [Claims Client mod](https://github.com/Tobias30yt/Claims-Client/releases) in the `mods/` folder. Its configurable default key is O (Controls → Claims).
 4. Run `/homes` or `/claims` for the central menu. It has Homes and Claims, plus Admin for administrators. Clients with the mod automatically receive native menus; other players receive decorated, paginated chest menus.
 
 The mod is **client-only**. Paper needs only the plugin. There are no required server plugins. LuckPerms permissions work through Bukkit's permission API.
@@ -108,7 +108,7 @@ Install **JDK 25** and set `JAVA_HOME` to it. Gradle 9.6.0 is pinned in the incl
 Outputs:
 
 - `plugin/build/libs/Claims-1.1.0.jar` — server plugin
-- `client/build/libs/Claims-Client-1.1.0.jar` — optional client mod
+- Optional client mod and vanilla Snake screen: [Claims Client releases](https://github.com/Tobias30yt/Claims-Client/releases)
 
 The shared wire protocol is bundled into both artifacts; it is not a separate installation. An optional GitHub Actions workflow template is included at `docs/ci/github-actions-build.yml`. To activate CI, copy it to `.github/workflows/build.yml` using GitHub authentication with workflow permission. The template builds/tests both projects and uploads the JARs. It is not active in this repository.
 

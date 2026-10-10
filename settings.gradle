@@ -1,3 +1,3 @@
 pluginManagement { repositories { maven { url = 'https://maven.fabricmc.net/' }; gradlePluginPortal() } }
 rootProject.name = 'Claims'
-include 'shared', 'plugin', 'client'
+include 'shared', 'plugin'
