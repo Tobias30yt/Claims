@@ -1,11 +1,13 @@
 package de.tobias30.claims;
 
 import de.tobias30.claims.shared.Wire;
-import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.*;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.*;
+import org.bukkit.block.sign.Side;
+import io.papermc.paper.math.Position;
+import io.papermc.paper.event.packet.UncheckedSignChangeEvent;
 import org.bukkit.entity.Player;
 import org.bukkit.event.*;
 import org.bukkit.event.inventory.*;
@@ -22,10 +24,10 @@ final class Menus implements Listener, PluginMessageListener {
     static final String HELLO = "claims:hello", MENU = "claims:menu", ACTION = "claims:action";
     private static final int PAGE = 21;
     private static final int[] ENTRY_SLOTS = {10,11,12,13,14,15,16,19,20,21,22,23,24,25,28,29,30,31,32,33,34};
-    private static final int[] FOOTER_SLOTS = {46,47,51,52};
+    private static final int[] FOOTER_SLOTS = {46,47,48,50,51,52};
     private record Action(Wire.Button button, Material icon, Consumer<String> callback) {}
     private record Session(UUID id, List<Action> actions, long expiry) {}
-    private record Prompt(UUID session, int index) {}
+    private record Prompt(UUID session, int index, Location sign) {}
     private final ClaimsPlugin plugin;
     private final Map<UUID, Session> sessions = new HashMap<>();
     private final Map<UUID, Prompt> prompts = new ConcurrentHashMap<>();
@@ -44,6 +46,13 @@ final class Menus implements Listener, PluginMessageListener {
     }
     void chest(Player p) { forcedChest.add(p.getUniqueId()); }
     void auto(Player p) { forcedChest.remove(p.getUniqueId()); }
+    void main(Player p) {
+        var actions = new ArrayList<Action>();
+        actions.add(button("Homes", "Saved destinations", Material.RED_BED, () -> homes(p, p.getUniqueId(), 0)));
+        actions.add(button("Claims", "Your protected chunks", Material.GRASS_BLOCK, () -> claims(p, p.getUniqueId(), 0)));
+        if (p.hasPermission("claims.admin")) actions.add(button("Admin menu", "Manage players, claims and homes", Material.COMMAND_BLOCK, () -> admin(p, 0)));
+        show(p, "Claims", "Choose what you want to manage", actions, actions.size(), "");
+    }
     private Action button(String label, String detail, Material icon, Runnable callback) {
         return new Action(new Wire.Button(label, detail, false, false), icon, ignored -> callback.run());
     }
@@ -76,8 +85,9 @@ final class Menus implements Listener, PluginMessageListener {
         holder.inventory.setItem(4, item(Material.HEART_OF_THE_SEA, title, subtitle + "\nYour changes save automatically.", false));
         if (entryCount == 0 && !emptyState.isBlank()) holder.inventory.setItem(22, item(Material.BOOK, "Nothing here yet", emptyState, false));
         for (int i = 0; i < entryCount; i++) {
-            Action a = actions.get(i); holder.inventory.setItem(ENTRY_SLOTS[i], item(a.icon(), a.button().label(), a.button().detail(), a.button().danger()));
-            holder.actionSlots[ENTRY_SLOTS[i]] = i;
+            int slot = title.equals("Claims") && entryCount <= 3 ? 20 + i * 2 : ENTRY_SLOTS[i];
+            Action a = actions.get(i); holder.inventory.setItem(slot, item(a.icon(), a.button().label(), a.button().detail(), a.button().danger()));
+            holder.actionSlots[slot] = i;
         }
         int footer = 0;
         for (int i = entryCount; i < actions.size(); i++) {
@@ -88,7 +98,7 @@ final class Menus implements Listener, PluginMessageListener {
                 holder.actionSlots[previous ? 45 : 53] = i;
             } else {
                 int slot = FOOTER_SLOTS[footer++];
-                holder.inventory.setItem(slot, item(a.icon(), label, a.button().detail() + (a.button().input() ? "\nClick and enter your answer in chat. Type cancel to stop." : ""), a.button().danger()));
+                holder.inventory.setItem(slot, item(a.icon(), label, a.button().detail() + (a.button().input() ? "\nClick to open sign input." : ""), a.button().danger()));
                 holder.actionSlots[slot] = i;
             }
         }
@@ -110,12 +120,11 @@ final class Menus implements Listener, PluginMessageListener {
         for (var home : homes.subList(current * PAGE, Math.min(homes.size(), (current + 1) * PAGE))) {
             actions.add(button(home.name(), plugin.world(home.world()) + "\n" + (int) home.x() + ", " + (int) home.y() + ", " + (int) home.z() + " • Click for options", Material.RED_BED, () -> home(p, owner, home.name())));
         }
-        if (p.getUniqueId().equals(owner)) actions.add(input("Save home", "Enter a home name (1–24 characters).", text -> plugin.setHome(p, text)));
+        if (p.getUniqueId().equals(owner)) actions.add(input("Create new home", "Enter a home name (1–24 characters).", text -> { plugin.setHome(p, text); homes(p, owner, 0); }));
         pages(actions, current, homes.size(), n -> homes(p, owner, n));
-        actions.add(button("Claims", "Manage protected chunks", Material.GRASS_BLOCK, () -> claims(p, owner, 0)));
-        if (p.hasPermission("claims.admin")) actions.add(button("Administration", "Browse all players", Material.COMMAND_BLOCK, () -> admin(p, 0)));
+        if (owner.equals(p.getUniqueId())) actions.add(button("Main menu", "Return to Homes, Claims and Admin", Material.ARROW, () -> main(p)));
         String limit = p.getUniqueId().equals(owner) ? " / " + Limits.display(plugin.limit(p, "homes")) : "";
-        String subtitle = homes.isEmpty() ? "No homes yet • Use Save home below" : homes.size() + limit + " saved homes • Page " + (current + 1);
+        String subtitle = homes.isEmpty() ? "No homes yet • Create your first home below" : homes.size() + limit + " saved homes • Page " + (current + 1);
         show(p, owner.equals(p.getUniqueId()) ? "Your Homes" : plugin.data.name(owner) + "'s Homes", subtitle, actions, homes.size() - current * PAGE, homes.isEmpty() ? "Use Save home below to add your first destination." : "");
     }
     private void home(Player p, UUID owner, String name) {
@@ -136,25 +145,26 @@ final class Menus implements Listener, PluginMessageListener {
         var claims = plugin.data.claims(owner); var actions = new ArrayList<Action>(); int current = clamp(page, claims.size());
         for (var claim : claims.subList(current * PAGE, Math.min(claims.size(), (current + 1) * PAGE))) {
             var key = claim.key();
-            actions.add(button("Chunk " + key.x() + ", " + key.z(), plugin.world(key.world()) + "\n" + claim.trusted().size() + " trusted • Click for options", Material.GRASS_BLOCK, () -> claim(p, key)));
+            String label = claim.name().isBlank() ? "Chunk " + key.x() + ", " + key.z() : claim.name();
+            actions.add(button(label, plugin.world(key.world()) + " • " + key.x() + ", " + key.z(), Material.GRASS_BLOCK, () -> claim(p, key)));
         }
-        if (owner.equals(p.getUniqueId())) actions.add(button("Claim this chunk", "Protect the chunk you are standing in", Material.GOLDEN_SHOVEL, () -> { plugin.claim(p); claims(p, owner, current); }));
         pages(actions, current, claims.size(), n -> claims(p, owner, n));
-        actions.add(button("Homes", "Manage saved locations", Material.RED_BED, () -> homes(p, owner, 0)));
-        if (p.hasPermission("claims.admin")) actions.add(button("Administration", "Browse all players", Material.COMMAND_BLOCK, () -> admin(p, 0)));
+        if (owner.equals(p.getUniqueId())) actions.add(button("Main menu", "Return to Homes, Claims and Admin", Material.ARROW, () -> main(p)));
         String limit = owner.equals(p.getUniqueId()) ? " / " + Limits.display(plugin.limit(p, "claims")) : "";
         String subtitle = claims.isEmpty() ? "No claims yet • Claim the chunk you are in" : claims.size() + limit + " protected chunks • Page " + (current + 1);
-        show(p, owner.equals(p.getUniqueId()) ? "Your Claims" : plugin.data.name(owner) + "'s Claims", subtitle, actions, claims.size() - current * PAGE, claims.isEmpty() ? "Choose Claim this chunk below to protect the area you are standing in." : "");
+        show(p, owner.equals(p.getUniqueId()) ? "Your Claims" : plugin.data.name(owner) + "'s Claims", subtitle, actions, claims.size() - current * PAGE, claims.isEmpty() ? "Use /claim while standing in a chunk to protect it." : "");
     }
     private void claim(Player p, DataStore.Key key) {
         var c = plugin.data.claim(key);
         if (c == null) { ClaimsPlugin.error(p, "Claim no longer exists."); return; }
         if (!owner(p, c.owner())) return;
-        show(p, "Chunk " + key.x() + ", " + key.z(), plugin.world(key.world()) + " • " + plugin.data.name(c.owner()), List.of(
-            input("Trust player", "Enter a player name or UUID", text -> { plugin.trust(p, key, text, true); claim(p, key); }),
-            button("Manage trusted", c.trusted().size() + " trusted • Review access", Material.PLAYER_HEAD, () -> trusted(p, key, 0)),
+        String title = c.name().isBlank() ? "Chunk " + key.x() + ", " + key.z() : c.name();
+        show(p, title, plugin.world(key.world()) + " • Chunk " + key.x() + ", " + key.z() + " • " + plugin.data.name(c.owner()), List.of(
+            input("Rename claim", "Enter a name (1–32 letters, digits, spaces, _ or -)", text -> { plugin.renameClaim(p, key, text); claim(p, key); }),
+            input("Add whitelist player", "Enter a player name or UUID", text -> { plugin.trust(p, key, text, true); claim(p, key); }),
+            button("Whitelist", c.trusted().size() + " allowed player(s) • Manage access", Material.PLAYER_HEAD, () -> trusted(p, key, 0)),
             danger("Unclaim", "Release this protected chunk", () -> release(p, c)),
-            button("All claims", "Return to your chunk list", Material.GRASS_BLOCK, () -> claims(p, c.owner(), 0))));
+            button("Back to claims", "Return to your claim list", Material.GRASS_BLOCK, () -> claims(p, c.owner(), 0))));
     }
     private void trusted(Player p, DataStore.Key key, int page) {
         var c = plugin.data.claim(key); if (c == null || !owner(p, c.owner())) return;
@@ -182,7 +192,7 @@ final class Menus implements Listener, PluginMessageListener {
             UUID id = plugin.data.player(text); if (id == null) ClaimsPlugin.error(p, "Player not found."); else player(p, id);
         }));
         actions.add(button("Reload configuration", "Reload defaults, worlds and teleport settings", Material.REPEATER, () -> { if (plugin.admin(p)) { plugin.reloadConfig(); ClaimsPlugin.message(p, "Configuration reloaded."); admin(p, current); } }));
-        actions.add(button("My homes", "Return to your homes", Material.RED_BED, () -> homes(p, p.getUniqueId(), 0)));
+        actions.add(button("Main menu", "Return to Homes, Claims and Admin", Material.ARROW, () -> main(p)));
         show(p, "Claims Admin", ids.isEmpty() ? "No player data yet • Players appear after joining" : ids.size() + " players • Page " + (current + 1), actions, ids.size() - current * PAGE, ids.isEmpty() ? "No player data yet. Players appear here after joining." : "");
     }
     private void player(Player p, UUID owner) {
@@ -226,14 +236,8 @@ final class Menus implements Listener, PluginMessageListener {
         int selected = index;
         Bukkit.getScheduler().runTask(plugin, () -> {
             if (sessions.get(p.getUniqueId()) != session) return;
-            if (session.actions().get(selected).button().input()) {
-                prompts.put(p.getUniqueId(), new Prompt(session.id(), selected)); p.closeInventory();
-                ClaimsPlugin.message(p, "Enter text in chat, or type 'cancel'. Expires in 60 seconds.");
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                    Prompt prompt = prompts.get(p.getUniqueId());
-                    if (prompt != null && prompt.session().equals(session.id())) { prompts.remove(p.getUniqueId()); sessions.remove(p.getUniqueId(), session); }
-                }, 1200L);
-            } else execute(p, session.id(), selected, "");
+            if (session.actions().get(selected).button().input()) openSign(p, session.id(), selected);
+            else execute(p, session.id(), selected, "");
         });
     }
     @EventHandler public void drag(InventoryDragEvent e) { if (e.getView().getTopInventory().getHolder() instanceof Holder) e.setCancelled(true); }
@@ -242,17 +246,34 @@ final class Menus implements Listener, PluginMessageListener {
             var session = sessions.get(e.getPlayer().getUniqueId()); if (session != null && session.id().equals(holder.id)) sessions.remove(e.getPlayer().getUniqueId());
         }
     }
-    @EventHandler(priority = EventPriority.LOWEST) public void chat(AsyncChatEvent e) {
-        Prompt prompt = prompts.get(e.getPlayer().getUniqueId()); if (prompt == null) return;
-        e.setCancelled(true); String text = PlainTextComponentSerializer.plainText().serialize(e.message());
-        Bukkit.getScheduler().runTask(plugin, () -> {
-            if (!prompts.remove(e.getPlayer().getUniqueId(), prompt)) return;
-            if (text.equalsIgnoreCase("cancel")) { sessions.remove(e.getPlayer().getUniqueId()); ClaimsPlugin.message(e.getPlayer(), "Cancelled."); }
-            else execute(e.getPlayer(), prompt.session(), prompt.index(), text);
-        });
+    private void openSign(Player p, UUID session, int index) {
+        Location at = p.getLocation().getBlock().getRelative(0, 2, 0).getLocation();
+        Prompt prompt = new Prompt(session, index, at); prompts.put(p.getUniqueId(), prompt);
+        p.closeInventory();
+        var signData = Material.OAK_SIGN.createBlockData();
+        p.sendBlockChange(at, signData);
+        var sign = (org.bukkit.block.Sign) signData.createBlockState();
+        sign.setAllowedEditorUniqueId(p.getUniqueId());
+        p.sendBlockUpdate(at, sign);
+        p.openVirtualSign(Position.block(at), Side.FRONT);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> restorePrompt(p.getUniqueId(), prompt), 1200L);
+    }
+    private void restorePrompt(UUID player, Prompt prompt) {
+        if (!prompts.remove(player, prompt)) return;
+        Player p = Bukkit.getPlayer(player);
+        if (p != null) p.sendBlockChange(prompt.sign(), prompt.sign().getBlock().getBlockData());
+    }
+    @EventHandler(priority = EventPriority.HIGHEST) public void signChange(UncheckedSignChangeEvent e) {
+        Prompt prompt = prompts.get(e.getPlayer().getUniqueId());
+        var position = e.getEditedBlockPosition();
+        if (prompt == null || position.blockX() != prompt.sign().getBlockX() || position.blockY() != prompt.sign().getBlockY() || position.blockZ() != prompt.sign().getBlockZ()) return;
+        e.setCancelled(true);
+        String text = e.lines().stream().map(line -> PlainTextComponentSerializer.plainText().serialize(line)).filter(line -> !line.isBlank()).findFirst().orElse("");
+        restorePrompt(e.getPlayer().getUniqueId(), prompt);
+        execute(e.getPlayer(), prompt.session(), prompt.index(), text);
     }
     @EventHandler public void quit(PlayerQuitEvent e) {
-        UUID id = e.getPlayer().getUniqueId(); sessions.remove(id); prompts.remove(id); nativeClients.remove(id); forcedChest.remove(id);
+        UUID id = e.getPlayer().getUniqueId(); Prompt prompt = prompts.get(id); if (prompt != null) restorePrompt(id, prompt); sessions.remove(id); nativeClients.remove(id); forcedChest.remove(id);
     }
     void close() {
         for (Player p : Bukkit.getOnlinePlayers()) if (p.getOpenInventory().getTopInventory().getHolder() instanceof Holder) p.closeInventory();

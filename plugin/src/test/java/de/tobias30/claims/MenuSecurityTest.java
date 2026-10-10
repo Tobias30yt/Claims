@@ -37,7 +37,7 @@ class MenuSecurityTest {
         throw new AssertionError("Missing action " + label);
     }
     @Test void sessionsAreBoundToPlayerAndConsumedOnUse() throws Exception {
-        Player first = player(), second = player(); menus.homes(first, first.getUniqueId(), 0); menus.homes(second, second.getUniqueId(), 0);
+        Player first = player(), second = player(); menus.main(first); menus.main(second);
         Wire.Menu menu = latest(first); byte[] click = Wire.action(new Wire.Action(menu.session(), action(menu, "Claims"), ""));
         menus.onPluginMessageReceived(Menus.ACTION, second, click); verify(second, times(1)).sendPluginMessage(eq(plugin), eq(Menus.MENU), any());
         menus.onPluginMessageReceived(Menus.ACTION, first, click); verify(first, times(2)).sendPluginMessage(eq(plugin), eq(Menus.MENU), any());

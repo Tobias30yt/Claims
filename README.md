@@ -5,15 +5,15 @@ Chunk claims and named homes for **Paper 26.3**, with an optional **Fabric 26.3 
 ## Installation
 
 1. Run Paper **26.3** with **Java 25**. The plugin is built against Paper `26.3.build.169-beta`.
-2. Put the latest `plugin/build/libs/Claims-1.1.0.jar` in the server's `plugins/` folder and restart.
-3. Optional: install Fabric Loader **0.19.5+** and Fabric API **0.162.0+26.3** on the client, then put `client/build/libs/Claims-Client-1.1.0.jar` in its `mods/` folder.
-4. Run `/homes` or `/claims`. Clients with the mod automatically receive native menus; other players receive decorated, paginated chest menus.
+2. Put `plugin/build/libs/Claims-1.2.0.jar` in the server's `plugins/` folder and restart.
+3. Optional: install Fabric Loader **0.19.5+** and Fabric API **0.162.0+26.3** on the client, then put `client/build/libs/Claims-Client-1.2.0.jar` in its `mods/` folder.
+4. Run `/homes` or `/claims` for the central menu. It has Homes and Claims, plus Admin for administrators. Clients with the mod automatically receive native menus; other players receive decorated, paginated chest menus.
 
 The mod is **client-only**. Paper needs only the plugin. There are no required server plugins. LuckPerms permissions work through Bukkit's permission API.
 
 Use `/claims chest` to force chest menus for your current connection and `/claims auto` to restore automatic detection. With the mod installed, chest mode applies to homes, claims and admin menus. Client menu detection resets when reconnecting. Set `client-menus: false` to force chest menus server-wide.
 
-Menus use the same simple layout in both modes: the top shows what you are viewing and your current count, the center lists homes/chunks/players, and the bottom row has navigation, the main actions and Close. Select a home or chunk once to open its options; selecting a home will no longer teleport immediately. Empty lists say how to add the first entry. The client screen groups readable two-line cards into two columns, gives tooltips and splits larger pages to fit the user's window. Pagination arrows advance through the visible entries before opening the next server page.
+Menus follow the same path in both modes: the central menu opens Homes, Claims or (for admins) Admin. Homes shows saved homes and Create new home. Claims shows only your claimed chunks; selecting one opens its coordinates, rename, whitelist and release actions. Claim a chunk with `/claim`. The Fabric screen uses native text fields. Without the mod, name and player inputs open the Minecraft sign editor. Lists are paginated, and selecting a home opens its options rather than teleporting immediately.
 
 ## Commands
 
@@ -21,7 +21,8 @@ Menus use the same simple layout in both modes: the top shows what you are viewi
 | --- | --- |
 | `/claim` | Claim the current 16×16 chunk at all heights |
 | `/unclaim` | Confirm releasing the current chunk |
-| `/claims` | Browse your claims and manage access |
+| `/claims` | Open the central menu |
+| `/claims list` | Browse your claims |
 | `/claims trust <player or UUID>` | Trust someone in the current chunk |
 | `/claims untrust <player or UUID>` | Remove their access in the current chunk |
 | `/homes` | Browse saved homes |
@@ -32,7 +33,7 @@ Menus use the same simple layout in both modes: the top shows what you are viewi
 | `/claims reload` | Reload configuration without replacing stored data |
 | `/claims chest` / `/claims auto` | Choose menu mode |
 
-Home names use 1–24 letters, digits, underscores or hyphens and are case-insensitive. Chest menu input is entered privately through chat after clicking a name-input button; type `cancel` to abort. The prompt expires after 60 seconds. Native menus use a text field at the bottom of the screen. Hover buttons for details.
+Home names use 1–24 letters, digits, underscores or hyphens and are case-insensitive. Claim names allow 1–32 letters, digits, spaces, underscores or hyphens. Chest menu input uses the in-game sign editor and expires after 60 seconds. Native menus use a text field. Hover buttons for details.
 
 ## Permissions and limits
 

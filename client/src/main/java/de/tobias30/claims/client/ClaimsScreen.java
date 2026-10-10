@@ -38,28 +38,29 @@ final class ClaimsScreen extends Screen {
         }
 
         int listBottom = this.height - (needsInput ? 100 : 70);
-        int rows = entryCount == 0 ? 0 : Math.max(1, Math.min(6, (listBottom - 62 + 4) / 39));
-        int perPage = Math.max(1, rows * 2);
+        boolean rootMenu = menu.title().equals("Claims") && entryCount <= 3;
+        int rows = entryCount == 0 ? 0 : rootMenu ? entryCount : Math.max(1, Math.min(6, (listBottom - 62 + 4) / 39));
+        int perPage = Math.max(1, rows * (rootMenu ? 1 : 2));
         int totalPages = Math.max(1, (entryCount + perPage - 1) / perPage);
         page = Math.max(0, Math.min(page, totalPages - 1));
-        int cardWidth = (panelWidth - 38) / 2;
+        int cardWidth = rootMenu ? Math.min(300, panelWidth - 24) : (panelWidth - 38) / 2;
         int visibleEnd = Math.min(entryCount, (page + 1) * perPage);
         for (int i = page * perPage; i < visibleEnd; i++) {
             int cell = i - page * perPage;
-            int x = left + 12 + (cell % 2) * (cardWidth + 10);
-            int y = 62 + (cell / 2) * 39;
+            int x = rootMenu ? (this.width - cardWidth) / 2 : left + 12 + (cell % 2) * (cardWidth + 10);
+            int y = rootMenu ? (this.height - visibleEnd * 46 + 12) / 2 + cell * 46 : 62 + (cell / 2) * 39;
             Wire.Button entry = menu.buttons().get(i);
             Component label = Component.literal(shorten(entry.label(), cardWidth - 16)).withStyle(entry.danger() ? ChatFormatting.RED : ChatFormatting.WHITE);
             int actionIndex = i;
             Button card = Button.builder(label, b -> send(actionIndex)).bounds(x, y, cardWidth, 34).build();
             card.setTooltip(Tooltip.create(Component.literal(entry.label() + "\n" + entry.detail())));
             addRenderableWidget(card);
-            cards.add(new Card(entry.detail(), x + 8, y + 23, cardWidth - 16));
+            cards.add(new Card(rootMenu ? "" : entry.detail(), x + 8, y + 23, cardWidth - 16));
         }
 
         int localPrevious = page > 0 ? 1 : serverPrevious >= 0 ? 2 : 0;
         int localNext = page + 1 < totalPages ? 1 : serverNext >= 0 ? 2 : 0;
-        if (entryCount > 0 || serverPrevious >= 0 || serverNext >= 0) {
+        if (!rootMenu && (entryCount > 0 || serverPrevious >= 0 || serverNext >= 0)) {
             int previousAction = serverPrevious;
             int nextAction = serverNext;
             Button previous = Button.builder(Component.literal("‹"), b -> {
@@ -116,17 +117,18 @@ final class ClaimsScreen extends Screen {
         super.extractRenderState(graphics, mouseX, mouseY, delta);
         graphics.centeredText(font, title, width / 2, 14, 0xFFFFFFFF);
         graphics.centeredText(font, font.plainSubstrByWidth(menu.subtitle(), Math.max(40, width - 126)), width / 2, 35, 0xFFCCCCCC);
-        if (menu.entryCount() > 0) {
+        if (menu.entryCount() > 0 && !menu.title().equals("Claims")) {
             graphics.text(font, heading(menu.title()), (width - Math.min(500, width - 28)) / 2 + 12, 52, 0xFF8AC6FF);
             int bottom = height - (menu.buttons().stream().anyMatch(Wire.Button::input) ? 100 : 70);
             int rows = Math.max(1, Math.min(6, (bottom - 62 + 4) / 39));
             int pages = Math.max(1, (menu.entryCount() + rows * 2 - 1) / (rows * 2));
             graphics.centeredText(font, "View " + (page + 1) + " of " + pages, width / 2, 52, 0xFFB8C0CC);
             for (Card card : cards) {
+                if (card.detail().isBlank()) continue;
                 String trimmed = font.plainSubstrByWidth(card.detail().replace('\n', ' '), card.width());
                 graphics.text(font, trimmed, card.left(), card.top(), 0xFFB8C0CC);
             }
-        } else if (footerCount() == 0) {
+        } else if (menu.entryCount() == 0 && footerCount() == 0) {
             graphics.centeredText(font, "There is nothing to manage here yet.", width / 2, height / 2, 0xFFB8C0CC);
         }
     }

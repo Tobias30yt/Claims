@@ -1,5 +1,5 @@
 name: Claims
-version: 1.1.0
+version: 1.2.0
 main: de.tobias30.claims.ClaimsPlugin
 api-version: '26.3'
 author: Tobias30

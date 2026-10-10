@@ -8,8 +8,9 @@ import java.util.function.Consumer;
 /** Main-thread store. A mutation is published in memory only after durable atomic replacement. */
 public final class DataStore {
     public record Key(UUID world, int x, int z) {}
-    public record Claim(Key key, UUID owner, Set<UUID> trusted) {
+    public record Claim(Key key, UUID owner, Set<UUID> trusted, String name) {
         public Claim { trusted = Set.copyOf(trusted); }
+        public Claim(Key key, UUID owner, Set<UUID> trusted) { this(key, owner, trusted, ""); }
     }
     public record Home(UUID owner, String name, UUID world, double x, double y, double z, float yaw, float pitch) {}
     public static final class State {
@@ -51,11 +52,11 @@ public final class DataStore {
         Files.createDirectories(file.toAbsolutePath().getParent());
         Path temporary = file.resolveSibling(file.getFileName() + ".tmp");
         try (var stream = new FileOutputStream(temporary.toFile()); var out = new DataOutputStream(new BufferedOutputStream(stream))) {
-            out.writeInt(0x434C4D31); out.writeInt(next.names.size());
+            out.writeInt(0x434C4D32); out.writeInt(next.names.size());
             for (var e : next.names.entrySet()) { uuid(out, e.getKey()); out.writeUTF(e.getValue()); }
             out.writeInt(next.claims.size());
             for (Claim c : next.claims.values()) {
-                uuid(out, c.key().world()); out.writeInt(c.key().x()); out.writeInt(c.key().z()); uuid(out, c.owner());
+                uuid(out, c.key().world()); out.writeInt(c.key().x()); out.writeInt(c.key().z()); uuid(out, c.owner()); out.writeUTF(c.name());
                 out.writeInt(c.trusted().size()); for (UUID id : c.trusted()) uuid(out, id);
             }
             out.writeInt(next.homes.values().stream().mapToInt(Map::size).sum());
@@ -71,12 +72,12 @@ public final class DataStore {
     private void load() throws IOException {
         var next = new State();
         try (var in = new DataInputStream(new BufferedInputStream(Files.newInputStream(file)))) {
-            if (in.readInt() != 0x434C4D31) throw new IOException("Unknown Claims data format");
+            int format = in.readInt(); if (format != 0x434C4D31 && format != 0x434C4D32) throw new IOException("Unknown Claims data format");
             for (int n = count(in); n > 0; n--) next.names.put(uuid(in), in.readUTF());
             for (int n = count(in); n > 0; n--) {
-                var key = new Key(uuid(in), in.readInt(), in.readInt()); UUID owner = uuid(in); var trust = new HashSet<UUID>();
+                var key = new Key(uuid(in), in.readInt(), in.readInt()); UUID owner = uuid(in); String name = format == 0x434C4D32 ? in.readUTF() : ""; var trust = new HashSet<UUID>();
                 for (int t = count(in); t > 0; t--) trust.add(uuid(in));
-                if (next.claims.put(key, new Claim(key, owner, trust)) != null) throw new IOException("Duplicate claim");
+                if (next.claims.put(key, new Claim(key, owner, trust, name)) != null) throw new IOException("Duplicate claim");
             }
             for (int n = count(in); n > 0; n--) {
                 var h = new Home(uuid(in), in.readUTF(), uuid(in), in.readDouble(), in.readDouble(), in.readDouble(), in.readFloat(), in.readFloat());

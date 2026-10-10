@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "claims_client",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "name": "Claims Client",
   "description": "Native Minecraft menus for the Claims Paper plugin.",
   "authors": ["Tobias30"],
