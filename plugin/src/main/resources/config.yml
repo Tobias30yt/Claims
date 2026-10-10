@@ -1,0 +1,10 @@
+# Numeric permissions override these defaults; the highest granted number wins.
+default-homes: 3
+default-claims: 8
+# Empty = all worlds. Existing claims remain protected in disabled worlds.
+disabled-worlds: []
+teleport:
+  warmup-seconds: 3
+  cooldown-seconds: 5
+client-menus: true
+# Names use letters A-Z, digits, underscore and hyphen, max 24 characters.

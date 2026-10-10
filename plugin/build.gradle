@@ -1,0 +1,12 @@
+repositories { maven { url = 'https://repo.papermc.io/repository/maven-public/' } }
+dependencies {
+    implementation project(':shared')
+    compileOnly 'io.papermc.paper:paper-api:26.3.build.169-beta'
+    testImplementation 'io.papermc.paper:paper-api:26.3.build.169-beta'
+    testImplementation 'org.mockito:mockito-core:5.20.0'
+}
+jar {
+    archiveFileName = 'Claims-1.0.0.jar'
+    from project(':shared').sourceSets.main.output
+    from(rootProject.file('LICENSE.md'))
+}

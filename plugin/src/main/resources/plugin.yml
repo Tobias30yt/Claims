@@ -1,0 +1,40 @@
+name: Claims
+version: 1.0.0
+main: de.tobias30.claims.ClaimsPlugin
+api-version: '26.3'
+author: Tobias30
+description: Chunk protection, homes and optional native Fabric menus.
+commands:
+  claim:
+    description: Claim the current chunk
+    permission: claims.use
+  unclaim:
+    description: Release the current chunk (confirmation menu)
+    permission: claims.use
+  claims:
+    description: Manage claims, trust, menus and administration
+    permission: claims.use
+  homes:
+    description: Open your homes
+    permission: claims.use
+  home:
+    description: Teleport to a home
+    permission: claims.use
+  sethome:
+    description: Save a named home
+    permission: claims.use
+  delhome:
+    description: Delete a home (confirmation menu)
+    permission: claims.use
+permissions:
+  claims.use:
+    default: true
+  claims.admin:
+    default: op
+  claims.bypass:
+    description: Bypass player interaction protection (not explosions or limits)
+    default: false
+  claims.homes.unlimited:
+    default: false
+  claims.claims.unlimited:
+    default: false
