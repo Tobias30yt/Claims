@@ -108,14 +108,14 @@ public final class ClaimsPlugin extends JavaPlugin implements Listener, CommandE
             }
             int minX = chunkX << 4, minZ = chunkZ << 4;
             int maxY = world.getMaxHeight();
-            for (int y = world.getMinHeight(); y < maxY; y += 2) {
+            for (int y = world.getMinHeight(); y < maxY; y++) {
                 particle(viewer, world, minX, y, minZ);
                 particle(viewer, world, minX + 16, y, minZ);
                 particle(viewer, world, minX, y, minZ + 16);
                 particle(viewer, world, minX + 16, y, minZ + 16);
             }
-            for (int y = world.getMinHeight(); y < maxY; y += 16) {
-                for (int offset = 0; offset <= 16; offset += 4) {
+            for (int y = world.getMinHeight(); y < maxY; y += 4) {
+                for (int offset = 0; offset <= 16; offset += 2) {
                     particle(viewer, world, minX + offset, y, minZ);
                     particle(viewer, world, minX + offset, y, minZ + 16);
                     particle(viewer, world, minX, y, minZ + offset);
@@ -129,8 +129,33 @@ public final class ClaimsPlugin extends JavaPlugin implements Listener, CommandE
         };
         draw.run();
         borderPreviews.put(viewer.getUniqueId(), Bukkit.getScheduler().runTaskTimer(this, draw, 20L, 20L));
-        message(viewer, "Showing the green claim border for 6 seconds, from world floor to build height.");
+        message(viewer, "Showing a dense green border for 6 seconds, from world floor to build height.");
         return true;
+    }
+
+    /** Shows nearby owned claims even when the player is standing in wilderness. */
+    private void showNearbyClaimBorders(Player viewer) {
+        int playerChunkX = viewer.getLocation().getBlockX() >> 4;
+        int playerChunkZ = viewer.getLocation().getBlockZ() >> 4;
+        int radius = 8;
+        var nearby = data.claims(viewer.getUniqueId()).stream()
+            .filter(claim -> claim.key().world().equals(viewer.getWorld().getUID()))
+            .filter(claim -> Math.abs((long) claim.key().x() - playerChunkX) <= radius
+                && Math.abs((long) claim.key().z() - playerChunkZ) <= radius)
+            .sorted(Comparator.comparingLong(claim -> {
+                long dx = (long) claim.key().x() - playerChunkX;
+                long dz = (long) claim.key().z() - playerChunkZ;
+                return dx * dx + dz * dz;
+            }))
+            .limit(1)
+            .toList();
+        if (nearby.isEmpty()) {
+            error(viewer, "No claims you can view within 8 chunks. Use the claim menu to open one directly.");
+            return;
+        }
+        var claim = nearby.getFirst();
+        message(viewer, "Showing your nearest claim: " + claim.name() + " (chunk " + claim.key().x() + ", " + claim.key().z() + ").");
+        showClaimBorder(viewer, claim.key().world(), claim.key().x(), claim.key().z());
     }
 
     private void particle(Player viewer, World world, int x, int y, int z) {
@@ -205,9 +230,8 @@ public final class ClaimsPlugin extends JavaPlugin implements Listener, CommandE
             case "tpdeny" -> teleports.deny(p);
             case "tpcancel" -> { teleports.cancelRequest(p); teleports.cancel(p, true); }
             case "viewborder" -> {
-                var key = key(p.getLocation());
-                if (data.claim(key) == null) error(p, "This chunk is not claimed.");
-                else showClaimBorder(p, key.world(), key.x(), key.z());
+                if (args.length == 0) showNearbyClaimBorders(p);
+                else error(p, "Usage: /viewborder");
             }
             case "claims" -> {
                 String sub = args.length == 0 ? "menu" : args[0].toLowerCase(Locale.ROOT);
