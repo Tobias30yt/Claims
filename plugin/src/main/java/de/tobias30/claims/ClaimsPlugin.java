@@ -134,7 +134,7 @@ public final class ClaimsPlugin extends JavaPlugin implements Listener, CommandE
     }
 
     private void particle(Player viewer, World world, int x, int y, int z) {
-        world.spawnParticle(Particle.HAPPY_VILLAGER, new Location(world, x + 0.5, y + 0.5, z + 0.5), 1, 0, 0, 0, 0, viewer);
+        world.spawnParticle(Particle.HAPPY_VILLAGER, new Location(world, x + 0.5, y + 0.5, z + 0.5), 1, 0, 0, 0, 0);
     }
     void unclaim(Player p, DataStore.Key key, UUID expectedOwner) {
         if (!use(p)) return;

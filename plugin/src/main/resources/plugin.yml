@@ -1,5 +1,5 @@
 name: Claims
-version: 1.5.3
+version: 1.5.4
 main: de.tobias30.claims.ClaimsPlugin
 api-version: '26.3'
 softdepend: [WorldGuard]
