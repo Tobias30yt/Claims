@@ -36,7 +36,7 @@ public final class ClaimsPlugin extends JavaPlugin implements Listener, CommandE
         getServer().getPluginManager().registerEvents(menus, this);
         getServer().getPluginManager().registerEvents(teleports, this);
         getServer().getPluginManager().registerEvents(new Protection(this), this);
-        for (String name : List.of("claim", "unclaim", "claims", "homes", "home", "sethome", "delhome")) {
+        for (String name : List.of("claim", "unclaim", "claims", "homes", "home", "sethome", "delhome", "tpa", "tpahere", "tpaccept", "tpdeny", "tpcancel")) {
             Objects.requireNonNull(getCommand(name)).setExecutor(this); getCommand(name).setTabCompleter(this);
         }
         getServer().getOnlinePlayers().forEach(this::remember);
@@ -172,6 +172,14 @@ public final class ClaimsPlugin extends JavaPlugin implements Listener, CommandE
             case "home" -> { if (args.length == 0) menus.homes(p, p.getUniqueId(), 0); else teleports.home(p, p.getUniqueId(), args[0].toLowerCase(Locale.ROOT)); }
             case "sethome" -> { if (args.length != 1) error(p, "Usage: /sethome <name>"); else setHome(p, args[0]); }
             case "delhome" -> { if (args.length != 1) error(p, "Usage: /delhome <name>"); else menus.delete(p, p.getUniqueId(), args[0].toLowerCase(Locale.ROOT)); }
+            case "tpa", "tpahere" -> {
+                if (args.length != 1) { error(p, "Usage: /" + command.getName() + " <player>"); break; }
+                Player target = Bukkit.getPlayerExact(args[0]);
+                if (target == null) error(p, "Player not found or not online."); else teleports.request(p, target, command.getName().equals("tpahere"));
+            }
+            case "tpaccept" -> teleports.accept(p);
+            case "tpdeny" -> teleports.deny(p);
+            case "tpcancel" -> { teleports.cancelRequest(p); teleports.cancel(p, true); }
             case "claims" -> {
                 String sub = args.length == 0 ? "menu" : args[0].toLowerCase(Locale.ROOT);
                 switch (sub) {
@@ -192,6 +200,7 @@ public final class ClaimsPlugin extends JavaPlugin implements Listener, CommandE
         List<String> options = List.of();
         if (args.length == 1) {
             if (Set.of("home", "homes", "delhome").contains(c.getName())) options = data.homes(p.getUniqueId()).stream().map(DataStore.Home::name).toList();
+            if (Set.of("tpa", "tpahere").contains(c.getName())) options = Bukkit.getOnlinePlayers().stream().map(Player::getName).toList();
             if (c.getName().equals("claims")) options = p.hasPermission("claims.admin") ? List.of("menu", "list", "trust", "untrust", "chest", "auto", "admin", "reload") : List.of("menu", "list", "trust", "untrust", "chest", "auto");
         } else if (args.length == 2 && c.getName().equals("claims") && Set.of("trust", "untrust").contains(args[0])) options = data.players().stream().map(data::name).toList();
         String prefix = args[args.length - 1].toLowerCase(Locale.ROOT);
