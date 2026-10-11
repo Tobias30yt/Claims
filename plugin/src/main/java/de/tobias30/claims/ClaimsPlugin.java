@@ -38,7 +38,7 @@ public final class ClaimsPlugin extends JavaPlugin implements Listener, CommandE
         getServer().getPluginManager().registerEvents(menus, this);
         getServer().getPluginManager().registerEvents(teleports, this);
         getServer().getPluginManager().registerEvents(new Protection(this), this);
-        for (String name : List.of("claim", "unclaim", "claims", "homes", "home", "sethome", "delhome", "tpa", "tpahere", "tpaccept", "tpdeny", "tpcancel")) {
+        for (String name : List.of("claim", "unclaim", "claims", "homes", "home", "sethome", "delhome", "tpa", "tpahere", "tpaccept", "tpdeny", "tpcancel", "viewborder")) {
             Objects.requireNonNull(getCommand(name)).setExecutor(this); getCommand(name).setTabCompleter(this);
         }
         getServer().getOnlinePlayers().forEach(this::remember);
@@ -204,6 +204,11 @@ public final class ClaimsPlugin extends JavaPlugin implements Listener, CommandE
             case "tpaccept" -> teleports.accept(p);
             case "tpdeny" -> teleports.deny(p);
             case "tpcancel" -> { teleports.cancelRequest(p); teleports.cancel(p, true); }
+            case "viewborder" -> {
+                var key = key(p.getLocation());
+                if (data.claim(key) == null) error(p, "This chunk is not claimed.");
+                else showClaimBorder(p, key.world(), key.x(), key.z());
+            }
             case "claims" -> {
                 String sub = args.length == 0 ? "menu" : args[0].toLowerCase(Locale.ROOT);
                 switch (sub) {

@@ -1,5 +1,5 @@
 name: Claims
-version: 1.5.2
+version: 1.5.3
 main: de.tobias30.claims.ClaimsPlugin
 api-version: '26.3'
 softdepend: [WorldGuard]
@@ -45,6 +45,9 @@ commands:
     permission: claims.use
   tpcancel:
     description: Cancel your teleport request or warmup
+    permission: claims.use
+  viewborder:
+    description: Show the border of the claimed chunk you are standing in
     permission: claims.use
 permissions:
   claims.use:
