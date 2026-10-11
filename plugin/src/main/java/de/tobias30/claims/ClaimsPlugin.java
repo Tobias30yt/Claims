@@ -6,6 +6,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.*;
 import org.bukkit.event.player.*;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitTask;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import java.io.IOException;
@@ -18,6 +19,7 @@ public final class ClaimsPlugin extends JavaPlugin implements Listener, CommandE
     Teleports teleports;
     private WorldGuardHook worldGuard;
     private de.tobias30.claims.update.ReleaseUpdateChecker updateChecker;
+    private final Map<UUID, BukkitTask> borderPreviews = new HashMap<>();
     public record ClaimView(String world, int x, int z, String name, String owner) {}
     @Override public void onEnable() {
         saveDefaultConfig();
@@ -41,7 +43,7 @@ public final class ClaimsPlugin extends JavaPlugin implements Listener, CommandE
         }
         getServer().getOnlinePlayers().forEach(this::remember);
     }
-    @Override public void onDisable() { if (updateChecker != null) updateChecker.shutdown(); if (menus != null) menus.close(); if (teleports != null) teleports.close(); }
+    @Override public void onDisable() { if (updateChecker != null) updateChecker.shutdown(); if (menus != null) menus.close(); if (teleports != null) teleports.close(); borderPreviews.values().forEach(BukkitTask::cancel); borderPreviews.clear(); }
     @EventHandler public void join(PlayerJoinEvent e) { remember(e.getPlayer()); }
     private void remember(Player p) {
         if (!data.name(p.getUniqueId()).equals(p.getName())) save(p, s -> s.names.put(p.getUniqueId(), p.getName()));
@@ -92,20 +94,42 @@ public final class ClaimsPlugin extends JavaPlugin implements Listener, CommandE
         if (viewer == null || !viewer.isOnline()) return false;
         var claim = data.claim(new DataStore.Key(worldId, chunkX, chunkZ));
         World world = Bukkit.getWorld(worldId);
-        if (claim == null || world == null || !owns(viewer, claim.owner())) return false;
-        Bukkit.getGlobalRegionScheduler().run(this, task -> {
+        if (claim == null || world == null || !owns(viewer, claim.owner())) { error(viewer, "Claim not found or access denied."); return false; }
+        if (!viewer.getWorld().equals(world)) { error(viewer, "Go to the claim's world to view its border."); return false; }
+        BukkitTask previous = borderPreviews.remove(viewer.getUniqueId());
+        if (previous != null) previous.cancel();
+        final int[] frames = {0};
+        Runnable draw = () -> {
+            var current = data.claim(new DataStore.Key(worldId, chunkX, chunkZ));
+            if (!viewer.isOnline() || current == null || !owns(viewer, current.owner()) || !viewer.getWorld().equals(world)) {
+                BukkitTask task = borderPreviews.remove(viewer.getUniqueId());
+                if (task != null) task.cancel();
+                return;
+            }
             int minX = chunkX << 4, minZ = chunkZ << 4;
             int maxY = world.getMaxHeight();
+            for (int y = world.getMinHeight(); y < maxY; y += 2) {
+                particle(viewer, world, minX, y, minZ);
+                particle(viewer, world, minX + 16, y, minZ);
+                particle(viewer, world, minX, y, minZ + 16);
+                particle(viewer, world, minX + 16, y, minZ + 16);
+            }
             for (int y = world.getMinHeight(); y < maxY; y += 16) {
-                for (int offset = 0; offset <= 16; offset += 8) {
+                for (int offset = 0; offset <= 16; offset += 4) {
                     particle(viewer, world, minX + offset, y, minZ);
                     particle(viewer, world, minX + offset, y, minZ + 16);
                     particle(viewer, world, minX, y, minZ + offset);
                     particle(viewer, world, minX + 16, y, minZ + offset);
                 }
             }
-            message(viewer, "Green particles mark the chunk boundary from the world floor to build height.");
-        });
+            if (++frames[0] >= 7) {
+                BukkitTask task = borderPreviews.remove(viewer.getUniqueId());
+                if (task != null) task.cancel();
+            }
+        };
+        draw.run();
+        borderPreviews.put(viewer.getUniqueId(), Bukkit.getScheduler().runTaskTimer(this, draw, 20L, 20L));
+        message(viewer, "Showing the green claim border for 6 seconds, from world floor to build height.");
         return true;
     }
 
