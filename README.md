@@ -5,7 +5,7 @@ Chunk claims and named homes for **Paper 26.3**. An optional Fabric client mod i
 ## Installation
 
 1. Run Paper **26.3** with **Java 25**. The plugin is built against Paper `26.3.build.169-beta`.
-2. Put `plugin/build/libs/Claims-1.5.5.jar` in the server's `plugins/` folder and restart.
+2. Put `plugin/build/libs/Claims-1.5.6.jar` in the server's `plugins/` folder and restart.
 3. Optional: install Fabric Loader **0.19.5+** and Fabric API **0.162.0+26.3**, then install the [Claims Client mod](https://github.com/Tobias30yt/Claims-Client/releases) in the `mods/` folder. Its configurable default key is O (Controls → Claims).
 4. Run `/homes` or `/claims` for the central menu. It has Homes and Claims, plus Admin for administrators. Clients with the mod automatically receive native menus; other players receive decorated, paginated chest menus.
 
@@ -31,11 +31,7 @@ On startup and every 48 hours, Claims checks GitHub for newer releases and tells
 | `/home <name>` | Teleport to a home; no argument opens the GUI |
 | `/sethome <name>` | Save your position, yaw and pitch; replacing requires confirmation |
 | `/delhome <name>` | Confirm deleting a home |
-| `/tpa <player>` | Request to teleport to that player |
-| `/tpahere <player>` | Request that the player teleports to you |
-| `/tpaccept` / `/tpdeny` | Accept or deny the latest incoming request; chat buttons are also provided |
-| `/tpcancel` | Cancel your outgoing request or an active teleport warmup |
-| `/viewborder` | Show the border of the claimed chunk you are standing in |
+| `/viewborder` | Show the border of your nearest claim within eight chunks |
 | `/claims admin` | Administration for online and offline players |
 | `/claims reload` | Reload configuration without replacing stored data |
 | `/claims chest` / `/claims auto` | Choose menu mode |
@@ -79,8 +75,6 @@ PvP and player explosion damage are unchanged. Claims do not prevent walking int
 ## Homes and teleport safety
 
 New homes cannot be set in foreign claims without access. Teleports check access again after asynchronously loading the destination chunk. Missing worlds, changed/deleted homes, obstructed destinations, unsafe ground and world-border violations cancel the teleport. Movement or damage cancels the warmup. Mounted or dead players cannot teleport. Settings control warmup and cooldown.
-
-Player-to-player requests expire after 60 seconds and each player can have one incoming and one outgoing request. `/tpa` sends the requester to the target; `/tpahere` sends the accepting target to the requester. The player who will move must meet the same checks as a home teleport: warmup, stillness, no damage, cooldown, safe destination, claim access, and no vehicle/death. Accept and deny buttons in chat run the same commands as `/tpaccept` and `/tpdeny`.
 
 ## Configuration and storage
 
@@ -131,7 +125,7 @@ API references: [Paper 26.3](https://papermc.io/news/26-3/), [Fabric 26.3](https
 
 ## Alle Tobias30 MidniteSMP plugins
 
-- Claims: _[Paper 1.5.5](https://github.com/Tobias30yt/Claims/releases/tag/paper-1.5.5)_
+- Claims: _[Paper 1.5.6](https://github.com/Tobias30yt/Claims/releases/tag/paper-1.5.6)_
 - Claims Client Mod: _[1.31.6](https://github.com/Tobias30yt/Claims-Client/releases/tag/v1.31.6)_
 - Reports: _[1.2.36](https://github.com/Tobias30yt/Reports/releases/tag/v1.2.36)_
 - EndUpdate: _[1.0.1](https://github.com/Tobias30yt/EndUpdate/releases/tag/v1.0.1)_

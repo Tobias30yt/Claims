@@ -6,19 +6,13 @@ import org.bukkit.event.*;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.scheduler.BukkitTask;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.event.ClickEvent;
-import net.kyori.adventure.text.format.NamedTextColor;
 import java.util.*;
 
 final class Teleports implements Listener {
     private final ClaimsPlugin plugin;
     private record Pending(UUID token, Location start, BukkitTask task) {}
-    private record Request(UUID id, UUID requester, UUID target, boolean here, BukkitTask expiry) {}
     private final Map<UUID, Pending> pending = new HashMap<>();
     private final Map<UUID, Long> cooldown = new HashMap<>();
-    private final Map<UUID, Request> incoming = new HashMap<>();
-    private final Map<UUID, Request> outgoing = new HashMap<>();
     Teleports(ClaimsPlugin plugin) { this.plugin = plugin; }
     void home(Player p, UUID owner, String name) {
         if (!plugin.use(p) || !plugin.owns(p, owner)) { ClaimsPlugin.error(p, "Access denied."); return; }
@@ -30,74 +24,6 @@ final class Teleports implements Listener {
         if (!plugin.allowed(p, destination)) { ClaimsPlugin.error(p, "You no longer have access to that claim."); return; }
         begin(p, destination, "Welcome to " + name + ".", () -> plugin.use(p) && plugin.owns(p, owner)
                 && home.equals(plugin.data.home(owner, name)), () -> plugin.audit(p, owner, "visited home " + name));
-    }
-
-    void request(Player requester, Player target, boolean here) {
-        if (requester.equals(target)) { ClaimsPlugin.error(requester, "You cannot send a teleport request to yourself."); return; }
-        Request previousOutgoing = outgoing.remove(requester.getUniqueId());
-        if (previousOutgoing != null) remove(previousOutgoing, false);
-        Request previousIncoming = incoming.remove(target.getUniqueId());
-        if (previousIncoming != null) remove(previousIncoming, true);
-        UUID id = UUID.randomUUID();
-        BukkitTask expiry = Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            Request current = incoming.get(target.getUniqueId());
-            if (current != null && current.id().equals(id)) {
-                remove(current, false);
-                if (requester.isOnline()) ClaimsPlugin.error(requester, "Your teleport request expired.");
-                if (target.isOnline()) ClaimsPlugin.error(target, "Teleport request expired.");
-            }
-        }, 60 * 20L);
-        Request request = new Request(id, requester.getUniqueId(), target.getUniqueId(), here, expiry);
-        incoming.put(target.getUniqueId(), request);
-        outgoing.put(requester.getUniqueId(), request);
-        ClaimsPlugin.message(requester, "Teleport request sent to " + target.getName() + ". It expires in 60 seconds.");
-        target.sendMessage(Component.text(requester.getName() + (here ? " wants you to teleport to them. " : " wants to teleport to you. "), NamedTextColor.AQUA)
-                .append(Component.text("[Accept]", NamedTextColor.GREEN).clickEvent(ClickEvent.runCommand("/tpaccept")))
-                .append(Component.text("  ", NamedTextColor.GRAY))
-                .append(Component.text("[Deny]", NamedTextColor.RED).clickEvent(ClickEvent.runCommand("/tpdeny"))));
-    }
-
-    void accept(Player target) {
-        Request request = incoming.get(target.getUniqueId());
-        if (request == null) { ClaimsPlugin.error(target, "You have no pending teleport request."); return; }
-        Player requester = Bukkit.getPlayer(request.requester());
-        if (requester == null) { remove(request, false); ClaimsPlugin.error(target, "That player is no longer online."); return; }
-        remove(request, false);
-        Player teleporter = request.here() ? target : requester;
-        Player destinationPlayer = request.here() ? requester : target;
-        begin(teleporter, destinationPlayer.getLocation().clone(), "Teleport request accepted.", teleporter::isOnline, () -> {});
-        ClaimsPlugin.message(target, "Teleport request accepted.");
-        if (teleporter != target) ClaimsPlugin.message(requester, "Your request was accepted.");
-    }
-
-    void deny(Player target) {
-        Request request = incoming.get(target.getUniqueId());
-        if (request == null) { ClaimsPlugin.error(target, "You have no pending teleport request."); return; }
-        remove(request, false);
-        ClaimsPlugin.message(target, "Teleport request denied.");
-        Player requester = Bukkit.getPlayer(request.requester());
-        if (requester != null) ClaimsPlugin.error(requester, target.getName() + " denied your teleport request.");
-    }
-
-    void cancelRequest(Player player) {
-        Request request = outgoing.get(player.getUniqueId());
-        if (request == null) return;
-        remove(request, false);
-        ClaimsPlugin.message(player, "Teleport request cancelled.");
-        Player target = Bukkit.getPlayer(request.target());
-        if (target != null) ClaimsPlugin.error(target, player.getName() + " cancelled their teleport request.");
-    }
-
-    private void remove(Request request, boolean notifyReplaced) {
-        incoming.remove(request.target(), request);
-        outgoing.remove(request.requester(), request);
-        request.expiry().cancel();
-        if (notifyReplaced) {
-            Player oldRequester = Bukkit.getPlayer(request.requester());
-            if (oldRequester != null) ClaimsPlugin.error(oldRequester, "Your request was replaced by a newer request.");
-            Player oldTarget = Bukkit.getPlayer(request.target());
-            if (oldTarget != null) ClaimsPlugin.error(oldTarget, "The previous teleport request was replaced.");
-        }
     }
 
     private void begin(Player p, Location destination, String successMessage, java.util.function.BooleanSupplier stillValid, Runnable onSuccess) {
@@ -144,6 +70,6 @@ final class Teleports implements Listener {
         if (task != null && e.getTo() != null && (!task.start().getWorld().equals(e.getTo().getWorld()) || task.start().distanceSquared(e.getTo()) > 0.01)) cancel(e.getPlayer(), true);
     }
     @EventHandler(ignoreCancelled = true) public void damage(EntityDamageEvent e) { if (e.getEntity() instanceof Player p) cancel(p, true); }
-    @EventHandler public void quit(PlayerQuitEvent e) { Player player = e.getPlayer(); cancel(player, false); cooldown.remove(player.getUniqueId()); Request sent = outgoing.get(player.getUniqueId()); if (sent != null) { remove(sent, false); Player target = Bukkit.getPlayer(sent.target()); if (target != null) ClaimsPlugin.error(target, "Teleport request cancelled because the requester left."); } Request received = incoming.get(player.getUniqueId()); if (received != null) { remove(received, false); Player requester = Bukkit.getPlayer(received.requester()); if (requester != null) ClaimsPlugin.error(requester, "Teleport request cancelled because the target left."); } }
-    void close() { pending.values().forEach(p -> p.task().cancel()); pending.clear(); incoming.values().forEach(r -> r.expiry().cancel()); incoming.clear(); outgoing.clear(); }
+    @EventHandler public void quit(PlayerQuitEvent e) { Player player = e.getPlayer(); cancel(player, false); cooldown.remove(player.getUniqueId()); }
+    void close() { pending.values().forEach(p -> p.task().cancel()); pending.clear(); }
 }

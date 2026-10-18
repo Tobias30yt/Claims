@@ -1,5 +1,5 @@
 name: Claims
-version: 1.5.5
+version: 1.5.6
 main: de.tobias30.claims.ClaimsPlugin
 api-version: '26.3'
 softdepend: [WorldGuard]
@@ -29,25 +29,8 @@ commands:
   delhome:
     description: Delete a home (confirmation menu)
     permission: claims.use
-  tpa:
-    description: Request to teleport to a player
-    usage: /tpa <player>
-    permission: claims.use
-  tpahere:
-    description: Request a player to teleport to you
-    usage: /tpahere <player>
-    permission: claims.use
-  tpaccept:
-    description: Accept the latest incoming teleport request
-    permission: claims.use
-  tpdeny:
-    description: Deny the latest incoming teleport request
-    permission: claims.use
-  tpcancel:
-    description: Cancel your teleport request or warmup
-    permission: claims.use
   viewborder:
-    description: Show the border of the claimed chunk you are standing in
+    description: Show the border of your nearest claimed chunk
     permission: claims.use
 permissions:
   claims.use:
