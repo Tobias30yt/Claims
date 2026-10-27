@@ -5,7 +5,7 @@ Chunk claims and named homes for **Paper 26.3**. An optional Fabric client mod i
 ## Installation
 
 1. Run Paper **26.3** with **Java 25**. The plugin is built against Paper `26.3.build.169-beta`.
-2. Put `plugin/build/libs/Claims-1.5.7.jar` in the server's `plugins/` folder and restart.
+2. Put `plugin/build/libs/Claims-1.5.8.jar` in the server's `plugins/` folder and restart.
 3. Optional: install Fabric Loader **0.19.5+** and Fabric API **0.162.0+26.3**, then install the [Claims Client mod](https://github.com/Tobias30yt/Claims-Client/releases) in the `mods/` folder. Its configurable default key is O (Controls → Claims).
 4. Run `/homes` or `/claims` for the central menu. It has Homes and Claims, plus Admin for administrators. Clients with the mod automatically receive native menus; other players receive decorated, paginated chest menus.
 
@@ -15,7 +15,7 @@ Use `/claims chest` to force chest menus for your current connection and `/claim
 
 Menus follow the same path in both modes: the central menu opens Homes, Claims or (for admins) Admin. Homes shows saved homes and Create new home; selecting a home teleports immediately. Claims shows your claimed chunks; selecting one opens its coordinates, rename, whitelist, release and green particle-border preview. Claim a chunk with `/claim`. Chunks overlapping WorldGuard protected regions cannot be claimed when WorldGuard is installed. The Fabric screen uses native text fields. Without the mod, name and player inputs open the Minecraft sign editor. Lists are paginated.
 
-On startup and every 48 hours, Claims checks GitHub for newer stable releases. By default it downloads and validates the matching JAR into Paper's configured plugin update directory; Paper installs it at the next server restart. Set `update-checker.auto-install: false` to receive notices without downloading, or `update-checker.enabled: false` to disable checks. The optional client mod only logs update notices; it is installed separately on each player's computer.
+Automatic updates are always active. On startup and every 48 hours, Claims checks GitHub for newer stable releases, downloads the matching JAR, verifies its SHA-256 digest, plugin name and version, and stages it in Paper's configured plugin update directory. Paper installs it at the next server restart. The optional client mod only logs update notices; it is installed separately on each player's computer.
 
 ## Commands
 
@@ -125,8 +125,8 @@ API references: [Paper 26.3](https://papermc.io/news/26-3/), [Fabric 26.3](https
 
 ## Alle Tobias30 MidniteSMP plugins
 
-- Claims: _[Paper 1.5.7](https://github.com/Tobias30yt/Claims/releases/tag/paper-1.5.7)_
+- Claims: _[Paper 1.5.8](https://github.com/Tobias30yt/Claims/releases/tag/paper-1.5.8)_
 - Claims Client Mod: _[1.31.6](https://github.com/Tobias30yt/Claims-Client/releases/tag/v1.31.6)_
-- Reports: _[1.2.37](https://github.com/Tobias30yt/Reports/releases/tag/v1.2.37)_
-- EndUpdate: _[1.0.4](https://github.com/Tobias30yt/EndUpdate/releases/tag/v1.0.4)_
+- Reports: _[1.3.1](https://github.com/Tobias30yt/Reports/releases/tag/v1.3.1)_
+- EndUpdate: _[1.0.5](https://github.com/Tobias30yt/EndUpdate/releases/tag/v1.0.5)_
 - GrimAC: _[Modrinth](https://modrinth.com/plugin/grimac)_

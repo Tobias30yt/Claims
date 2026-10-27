@@ -7,7 +7,4 @@ teleport:
   warmup-seconds: 3
   cooldown-seconds: 5
 client-menus: true
-update-checker:
-  enabled: true
-  auto-install: true
 # Names use letters A-Z, digits, underscore and hyphen, max 24 characters.
